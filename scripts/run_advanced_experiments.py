@@ -20,9 +20,10 @@ import requests
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-PYTHON = r"C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe"
+PYTHON = sys.executable
 
 from common.utils import sha256_of_list
+from distributed.master import _select_verified_slices
 
 
 # ---------------------------------------------------------------------------
@@ -95,20 +96,10 @@ def run_single_pipeline(
     verify_ratio: float = 1.0,
 ) -> dict:
     """执行一次完整的流水线推理并返回指标。"""
-    import random as _rand
-
     num_slices = len(workers)
 
-    # 选择验证切片（首尾必选 + 中间随机）
-    all_ids = [w["slice_id"] for w in workers]
-    if verify_ratio >= 1.0:
-        verified_set = set(all_ids)
-    else:
-        must = {all_ids[0], all_ids[-1]}
-        middle = [i for i in all_ids if i not in must]
-        k = max(0, round(len(all_ids) * verify_ratio) - len(must))
-        k = min(k, len(middle))
-        verified_set = must | set(_rand.sample(middle, k))
+    # 使用 master 的统一选择策略（edge_cover）
+    verified_set = _select_verified_slices(num_slices, verify_ratio)
 
     e2e_start = time.perf_counter()
     current_input = initial_input

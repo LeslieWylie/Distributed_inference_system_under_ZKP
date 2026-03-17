@@ -105,7 +105,7 @@
 - 实验：{4 切片} × {tamper,skip,random,replay} × {100%,50% 验证率} = 8 组
 - 产出：`metrics/advanced_experiments.json`（后 8 条）
 
-### P2：隐私模式对比 ⏳ 待做
+### P2：隐私模式对比 ✅
 
 - 改动位置：`common/utils.py` 的 `ezkl_init`
 - 目标：对比 public / hashed / private 三种 EZKL 可见性模式的证明开销

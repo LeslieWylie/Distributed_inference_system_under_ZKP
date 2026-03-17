@@ -28,7 +28,7 @@ import requests
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-PYTHON = r"C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe"
+PYTHON = sys.executable
 
 from common.utils import sha256_of_list
 
@@ -124,7 +124,7 @@ def run_single_pipeline(
         resp = requests.post(
             f"{w['url']}/infer",
             json={"input_data": current_input, "request_id": f"exp-{sid}"},
-            params={"fault": str(inject).lower()},
+            params={"fault_type": "tamper" if inject else "none"},
             timeout=120,
         )
         resp.raise_for_status()
@@ -194,7 +194,7 @@ def run_throughput_test(workers: list, initial_input: list, num_requests: int = 
             resp = requests.post(
                 f"{w['url']}/infer",
                 json={"input_data": current, "request_id": "throughput"},
-                params={"fault": "false"},
+                params={"fault_type": "none"},
                 timeout=120,
             )
             resp.raise_for_status()

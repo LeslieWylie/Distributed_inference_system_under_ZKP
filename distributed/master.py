@@ -24,6 +24,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
 from common.utils import sha256_of_list
+from common.utils import ezkl_verify_proof, load_proof_instances_from_witness
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +122,7 @@ def run_pipeline(
     fault_type: str = "tamper",
     verify_ratio: float = 1.0,
     verify_strategy: str = "edge_cover",
+    seed: int | None = None,
 ) -> dict:
     """
     按流水线顺序调用各 Worker，收集结果并执行校验。
@@ -137,6 +139,8 @@ def run_pipeline(
         包含所有结果和指标的字典。
     """
     num_slices = len(workers)
+    if seed is not None:
+        random.seed(seed)
     verified_set = _select_verified_slices(num_slices, verify_ratio, verify_strategy)
 
     print("=" * 60)
@@ -144,6 +148,8 @@ def run_pipeline(
     print(f"  Workers: {num_slices}")
     print(f"  Verify ratio: {verify_ratio:.0%} -> proof at slices {sorted(verified_set)}")
     print(f"  Fault: {f'type={fault_type} at slice {fault_at}' if fault_at else 'None'}")
+    if seed is not None:
+        print(f"  Seed: {seed}")
     print("=" * 60)
 
     e2e_start = time.perf_counter()
@@ -151,7 +157,9 @@ def run_pipeline(
     current_input = initial_input
     results = []
     hash_chain_ok = True
-    malicious_nodes = []
+    l1_findings = []   # 输出完整性 (SHA-256)
+    l2_findings = []   # ZKP proof linking / master verify
+    l3_findings = []   # 外部哈希链一致性
 
     for i, worker in enumerate(workers):
         sid = worker["slice_id"]
@@ -177,13 +185,60 @@ def run_pipeline(
         rtt_ms = (time.perf_counter() - t0) * 1000
         resp.raise_for_status()
         data = resp.json()
+        worker_verified = data.get("verified")
+
+        if use_proof:
+            artifact_paths = data.get("proof_artifacts") or {}
+            verify_paths = {
+                "settings": artifact_paths.get("settings"),
+                "vk": artifact_paths.get("vk"),
+                "srs": artifact_paths.get("srs"),
+            }
+            proof_path = artifact_paths.get("proof_path")
+            witness_path = artifact_paths.get("witness_path")
+
+            try:
+                local_verified = bool(
+                    proof_path
+                    and all(verify_paths.values())
+                    and ezkl_verify_proof(proof_path, verify_paths)
+                )
+            except Exception as e:
+                local_verified = False
+                print(f"    ⚠ Master local verify error: {e}")
+
+            data["verified"] = local_verified
+            if witness_path:
+                try:
+                    data["proof_instances"] = load_proof_instances_from_witness(witness_path)
+                except Exception as e:
+                    print(f"    ⚠ Failed to load witness instances: {e}")
+
+            if not local_verified:
+                hash_chain_ok = False
+                l2_findings.append({
+                    "type": "proof_verify_failed",
+                    "slice_id": sid,
+                })
+
+            if worker_verified is not None and worker_verified != local_verified:
+                l2_findings.append({
+                    "type": "verify_mismatch",
+                    "slice_id": sid,
+                    "worker_verified": worker_verified,
+                    "master_verified": local_verified,
+                })
 
         print(f"    proof_gen: {data['metrics']['proof_gen_ms']:.0f} ms | "
               f"verify: {data['metrics']['verify_ms']:.0f} ms | "
               f"rtt: {rtt_ms:.0f} ms")
         print(f"    hash_in:  {data['hash_in'][:16]}...")
         print(f"    hash_out: {data['hash_out'][:16]}...")
-        print(f"    verified: {data['verified']}")
+        if use_proof:
+            print(f"    worker_verified: {worker_verified}")
+            print(f"    master_verified: {data['verified']}")
+        else:
+            print(f"    verified: {data['verified']}")
 
         # ══════════════════════════════════════════════════════════
         # 三层校验体系（安全等级严格区分）
@@ -198,9 +253,8 @@ def run_pipeline(
         output_integrity = (data["hash_out"] == actual_output_hash)
         if not output_integrity:
             hash_chain_ok = False
-            malicious_nodes.append({
+            l1_findings.append({
                 "type": "output_tamper",
-                "layer": "L1_external_hash",
                 "slice_id": sid,
                 "expected": data["hash_out"][:16],
                 "actual": actual_output_hash[:16],
@@ -226,9 +280,8 @@ def run_pipeline(
                     proof_linked = (prev_out == curr_in)
                     if not proof_linked:
                         hash_chain_ok = False
-                        malicious_nodes.append({
+                        l2_findings.append({
                             "type": "proof_link_break",
-                            "layer": "L2_zkp_linking",
                             "between": [prev["slice_id"], sid],
                         })
                         print(f"    ⚠ L2 PROOF LINK BREAK: slice {prev['slice_id']} → {sid} "
@@ -252,7 +305,8 @@ def run_pipeline(
 
             if not chain_match:
                 hash_chain_ok = False
-                malicious_nodes.append({
+                l3_findings.append({
+                    "type": "hash_chain_break",
                     "between": [prev["slice_id"], sid],
                     "expected": expected_hash[:16],
                     "actual": actual_hash[:16],
@@ -263,6 +317,7 @@ def run_pipeline(
 
         # 补充 Master 侧指标
         data["metrics"]["rtt_ms"] = round(rtt_ms, 2)
+        data["request_input"] = list(current_input)
         results.append(data)
 
         # 下一个 Worker 的输入 = 本 Worker 的输出
@@ -282,17 +337,42 @@ def run_pipeline(
         try:
             resp = requests.post(
                 f"{target['url']}/re_prove",
-                json={"input_data": target_data.get("output_data", [])},
+                json={"input_data": target_data.get("request_input", [])},
                 timeout=180,
             )
             if resp.status_code == 200:
                 challenge = resp.json()
+                artifact_paths = challenge.get("proof_artifacts") or {}
+                verify_paths = {
+                    "settings": artifact_paths.get("settings"),
+                    "vk": artifact_paths.get("vk"),
+                    "srs": artifact_paths.get("srs"),
+                }
+                proof_path = artifact_paths.get("proof_path")
+                try:
+                    master_re_verified = bool(
+                        proof_path
+                        and all(verify_paths.values())
+                        and ezkl_verify_proof(proof_path, verify_paths)
+                    )
+                except Exception as e:
+                    master_re_verified = False
+                    print(f"    ⚠ Challenge local verify error: {e}")
+
                 challenge_result = {
                     "challenged_slice": target["slice_id"],
-                    "re_verified": challenge.get("verified", False),
+                    "worker_re_verified": challenge.get("verified", False),
+                    "master_re_verified": master_re_verified,
                     "re_prove_ms": challenge.get("metrics", {}).get("proof_gen_ms", 0),
                 }
-                print(f"    re_verified: {challenge_result['re_verified']} "
+                if not master_re_verified:
+                    hash_chain_ok = False
+                    l2_findings.append({
+                        "type": "challenge_verify_failed",
+                        "slice_id": target["slice_id"],
+                    })
+                print(f"    re_verified: worker={challenge_result['worker_re_verified']} "
+                      f"master={challenge_result['master_re_verified']} "
                       f"({challenge_result['re_prove_ms']:.0f} ms)")
         except Exception as e:
             print(f"    ⚠ Challenge failed: {e}")
@@ -302,32 +382,34 @@ def run_pipeline(
     first_hash_ok = (results[0]["hash_in"] == expected_first_hash)
     if not first_hash_ok:
         hash_chain_ok = False
-        malicious_nodes.append({
+        l3_findings.append({
+            "type": "first_input_hash_mismatch",
             "between": ["input", results[0]["slice_id"]],
             "expected": expected_first_hash[:16],
             "actual": results[0]["hash_in"][:16],
         })
 
     # ── 汇总 ──
-    total_nodes = len(workers)
-    detected_count = len(malicious_nodes)
-    # 如果注入了故障，检测准确率 = 是否检测到了
-    if fault_at is not None:
-        actually_faulty = 1
-        detection_accuracy = min(detected_count, 1) / actually_faulty
-    else:
-        detection_accuracy = 1.0 if detected_count == 0 else 0.0
+    all_findings = l1_findings + l2_findings + l3_findings
+    detected_slices = sorted(set(
+        f.get("slice_id") for f in all_findings if f.get("slice_id") is not None
+    ))
+    fault_detected = bool(all_findings) if fault_at is not None else None
 
     summary = {
         "e2e_latency_ms": round(e2e_ms, 2),
         "hash_chain_ok": hash_chain_ok,
-        "malicious_nodes": malicious_nodes,
-        "detection_accuracy": detection_accuracy,
+        "l1_findings": l1_findings,
+        "l2_findings": l2_findings,
+        "l3_findings": l3_findings,
+        "detected_slices": detected_slices,
+        "fault_detected": fault_detected,
         "fault_injected_at": fault_at,
         "fault_type": fault_type if fault_at else None,
         "verify_ratio": verify_ratio,
         "verify_strategy": verify_strategy,
         "verified_slices": sorted(verified_set),
+        "seed": seed,
         "random_challenge": challenge_result,
         "slices": [
             {
@@ -354,13 +436,20 @@ def run_pipeline(
               f"verify={s['verify_ms']:.0f}ms rtt={s['rtt_ms']:.0f}ms"
               + (" [FAULT]" if s["fault_injected"] else ""))
     print(f"  哈希链:          {'PASS ✓' if hash_chain_ok else 'FAIL ✗'}")
-    print(f"  恶意检测准确率:  {detection_accuracy:.0%}")
-    if malicious_nodes:
-        for m in malicious_nodes:
-            if "between" in m:
-                print(f"    ⚠ 断链: {m['between']}")
-            elif "slice_id" in m:
-                print(f"    ⚠ 输出篡改: slice {m['slice_id']}")
+    print(f"  故障检测:        {fault_detected}")
+    print(f"  异常切片:        {detected_slices}")
+    if l1_findings:
+        print(f"  L1 发现 ({len(l1_findings)}):")
+        for f in l1_findings:
+            print(f"    ⚠ {f['type']}: slice {f.get('slice_id', '?')}")
+    if l2_findings:
+        print(f"  L2 发现 ({len(l2_findings)}):")
+        for f in l2_findings:
+            print(f"    ⚠ {f['type']}: {f.get('slice_id') or f.get('between', '?')}")
+    if l3_findings:
+        print(f"  L3 发现 ({len(l3_findings)}):")
+        for f in l3_findings:
+            print(f"    ⚠ {f['type']}: {f.get('between', '?')}")
     print("=" * 60)
 
     # 写入 metrics

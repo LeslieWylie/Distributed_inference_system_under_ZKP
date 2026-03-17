@@ -41,6 +41,17 @@ def get_memory_mb() -> float:
     return psutil.Process().memory_info().rss / (1024 * 1024)
 
 
+def load_proof_instances_from_witness(witness_path: str) -> dict:
+    """从 witness 文件中提取 processed_inputs/processed_outputs。"""
+    with open(witness_path, "r") as f:
+        witness_data = json.load(f)
+
+    return {
+        "processed_inputs": witness_data.get("processed_inputs", None),
+        "processed_outputs": witness_data.get("processed_outputs", None),
+    }
+
+
 # ---------------------------------------------------------------------------
 # EZKL 初始化（gen_settings → calibrate → compile → get_srs → setup）
 # ---------------------------------------------------------------------------
@@ -127,8 +138,9 @@ def ezkl_prove(data_path: str, paths: dict, artifacts_dir: str) -> dict:
     proof linking 依赖这些值的跨切片比对。
     """
     artifacts_dir = os.path.abspath(artifacts_dir)
-    witness_path = os.path.join(artifacts_dir, "witness.json")
-    proof_path = os.path.join(artifacts_dir, "proof.json")
+    proof_tag = os.path.splitext(os.path.basename(data_path))[0]
+    witness_path = os.path.join(artifacts_dir, f"{proof_tag}_witness.json")
+    proof_path = os.path.join(artifacts_dir, f"{proof_tag}_proof.json")
 
     mem_start = get_memory_mb()
 
@@ -136,16 +148,10 @@ def ezkl_prove(data_path: str, paths: dict, artifacts_dir: str) -> dict:
     ezkl.gen_witness(data_path, paths["compiled"], witness_path)
 
     # 提取 witness 中的公开实例（proof linking 的关键数据）
-    with open(witness_path, "r") as f:
-        witness_data = json.load(f)
-
     # processed_inputs/processed_outputs 是 ZKP 公开实例
     # 在 hashed 模式下 = Poseidon hash（电路内部计算，不可伪造）
     # 在 public 模式下 = 原始量化值
-    proof_instances = {
-        "processed_inputs": witness_data.get("processed_inputs", None),
-        "processed_outputs": witness_data.get("processed_outputs", None),
-    }
+    proof_instances = load_proof_instances_from_witness(witness_path)
 
     # prove
     t0 = time.perf_counter()
@@ -163,17 +169,43 @@ def ezkl_prove(data_path: str, paths: dict, artifacts_dir: str) -> dict:
 
     mem_end = get_memory_mb()
 
+    # 记录 proof 文件大小
+    proof_size_bytes = os.path.getsize(proof_path) if os.path.exists(proof_path) else 0
+    witness_size_bytes = os.path.getsize(witness_path) if os.path.exists(witness_path) else 0
+
     return {
         "proof": proof_data,
         "proof_path": proof_path,
+        "witness_path": witness_path,
         "verified": verified,
         "proof_instances": proof_instances,
+        "artifact_paths": {
+            "proof_path": proof_path,
+            "witness_path": witness_path,
+            "settings": paths["settings"],
+            "vk": paths["vk"],
+            "srs": paths["srs"],
+        },
         "metrics": {
             "proof_gen_ms": round(proof_gen_ms, 2),
             "verify_ms": round(verify_ms, 2),
             "peak_rss_mb": round(max(mem_start, mem_end), 2),
+            "proof_size_bytes": proof_size_bytes,
+            "witness_size_bytes": witness_size_bytes,
         },
     }
+
+
+def ezkl_verify_proof(proof_path: str, paths: dict) -> bool:
+    """使用本地 proof/settings/vk/srs 独立验证 proof。"""
+    return bool(
+        ezkl.verify(
+            proof_path,
+            paths["settings"],
+            paths["vk"],
+            srs_path=paths["srs"],
+        )
+    )
 
 
 # ---------------------------------------------------------------------------

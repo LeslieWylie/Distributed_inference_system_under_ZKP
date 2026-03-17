@@ -65,6 +65,7 @@ class InferResponse(BaseModel):
     proof: dict | None = None
     verified: bool | None = None
     proof_instances: dict | None = None  # ZKP 公开实例（含 Poseidon 哈希）
+    proof_artifacts: dict | None = None
     metrics: dict
     fault_injected: bool
     proof_mode: str = "full"  # "full" or "light"
@@ -158,6 +159,7 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
             proof=result["proof"],
             verified=result["verified"],
             proof_instances=result.get("proof_instances"),
+            proof_artifacts=result.get("artifact_paths"),
             metrics=result["metrics"],
             fault_injected=fault_injected,
             proof_mode="full",
@@ -181,6 +183,7 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
             hash_out=hash_out,
             proof=None,
             verified=None,
+            proof_artifacts=None,
             metrics={
                 "proof_gen_ms": 0.0,
                 "verify_ms": 0.0,
@@ -214,6 +217,7 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
             "slice_id": state["slice_id"],
             "verified": result["verified"],
             "proof_instances": result.get("proof_instances"),
+            "proof_artifacts": result.get("artifact_paths"),
             "metrics": result["metrics"],
         }
 
@@ -239,7 +243,8 @@ def main():
     # EZKL 初始化在 uvicorn 启动前（无事件循环冲突）
     onnx_abs = os.path.abspath(args.onnx)
     cal_abs = os.path.abspath(args.cal)
-    artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts", f"worker_{args.slice_id}")
+    artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts",
+                                   f"worker_{args.slice_id}_{args.visibility_mode}")
 
     print(f"[Worker {args.slice_id}] 初始化 EZKL (mode={args.visibility_mode})...")
     t0 = time.perf_counter()
