@@ -36,8 +36,8 @@
 ### 1.2 核心创新点
 
 1. **Pipeline + ZKP**：将 zkML 扩展到多节点流水线 $f = f_1 \circ f_2 \circ \cdots \circ f_N$
-2. **Proof Linking**：跨节点状态一致性（`prev.processed_outputs == curr.processed_inputs`）
-3. **Edge-Cover 安全模型**：图论级保证（`∀ edge: 至少一端有 ZKP`）
+2. **Proof Linking**：相邻 proof 节点间的状态一致性（`prev.processed_outputs == curr.processed_inputs`，仅当两端均为 proof 节点时成立）
+3. **选择性验证 + 外部一致性**：首尾必验 + edge-cover 选点 + 外部哈希链 + 随机挑战组合
 4. **Sampling Verification**：证明开销 vs 安全性可配置 tradeoff
 
 ### 1.3 学术表述
@@ -53,7 +53,7 @@
 当前**不存在**完整实现以下组合的系统：
 - 多 Worker 独立执行推理 + Worker 不可信
 - 流水线顺序依赖（链式状态）
-- 跨节点 proof linking（密码学级一致性）
+- 跨节点 proof linking（相邻 proof 间密码学一致性，light 节点处退化为外部哈希链）
 - 选择性验证（概率安全模型）
 
 ### 2.2 与已有范式的差异
@@ -88,10 +88,10 @@ Worker 1 Worker 2 ... Worker N
 | 层 | 机制 | 安全等级 |
 |:---:|---|---|
 | L1 | SHA256(output_data) == hash_out | fault detection（非对抗） |
-| L2 | prev.processed_outputs == curr.processed_inputs (ZKP instance) | **密码学级** |
+| L2 | prev.processed_outputs == curr.processed_inputs (ZKP instance) | **密码学级**（仅当两端均为 proof 节点时生效） |
 | L3 | prev.hash_out == curr.hash_in | consistency check（非对抗） |
 
-**L2 是系统唯一密码学安全来源。**
+**L2 是系统密码学安全来源，但仅在相邻切片均被选为 proof 模式时提供跨节点密码学约束。** 当一端为 light 节点时，该边退化为 L1+L3 的故障检测级保护，辅以随机挑战机制。
 
 ### 3.3 边覆盖策略
 

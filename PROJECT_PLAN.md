@@ -31,7 +31,7 @@
 
 1. **Pipeline + ZKP**：将 zkML 从单机推理扩展到多节点流水线场景
 2. **Proof Linking**：跨节点状态一致性约束（`prev.processed_outputs == curr.processed_inputs`）
-3. **Edge-Cover 安全模型**：图论级安全保证（`∀ edge (i,i+1): i ∈ ZKP ∨ (i+1) ∈ ZKP`）
+3. **选择性验证 + 一致性保障**：edge-cover 选点策略（`∀ edge (i,i+1): i ∈ ZKP ∨ (i+1) ∈ ZKP`）确保 proof 覆盖密度；L2 proof linking 仅在相邻 proof 间提供密码学约束，light 节点处退化为 L1+L3 故障检测 + 随机挑战
 4. **Sampling Verification**：证明开销 vs 安全性的可配置 tradeoff
 
 ### 一句话学术表述
@@ -152,66 +152,35 @@
 
 ---
 
-## 五、P2 详细计划（隐私模式对比 — 待执行）
+## 五、P2 实验结果（隐私模式对比 — 已完成）
 
-### 5.1 目标
+### 5.1 实验目标
 
 对比 EZKL 三种可见性模式的证明开销差异，回答"零知识保护的代价是多少"。
 
 ### 5.2 三种模式配置
 
-参考 EZKL 官方 `hashed_vis.ipynb` 示例：
-
 | 模式名 | input_visibility | output_visibility | param_visibility | 说明 |
 |---|---|---|---|---|
 | `all_public` | public | public | fixed | 当前默认，无隐私保护 |
-| `hashed` | hashed | public | hashed | 输入和参数以哈希形式暴露 |
+| `hashed` | hashed | public | hashed | 输入和参数以 Poseidon 哈希形式暴露 |
 | `private` | private | public | fixed | 输入完全不可见 |
 
-### 5.3 代码改动
+### 5.3 实验结果
 
-**文件：`common/utils.py`**
+实验矩阵：`{4 切片} × {all_public, hashed, private} × 正常模式 × 3 次均值`
 
-```python
-def ezkl_init(onnx_path, cal_path, artifacts_dir, visibility_mode="all_public"):
-    py_run_args = ezkl.PyRunArgs()
+| 模式 | proof(ms) | 开销倍数 |
+|:---:|---:|:---:|
+| all_public | 5,575 | 1.0× |
+| hashed (Poseidon) | 10,579 | 1.90× |
+| private | 5,294 | 0.95× |
 
-    if visibility_mode == "all_public":
-        py_run_args.input_visibility = "public"
-        py_run_args.output_visibility = "public"
-        py_run_args.param_visibility = "fixed"
-    elif visibility_mode == "hashed":
-        py_run_args.input_visibility = "hashed"
-        py_run_args.output_visibility = "public"
-        py_run_args.param_visibility = "hashed"
-    elif visibility_mode == "private":
-        py_run_args.input_visibility = "private"
-        py_run_args.output_visibility = "public"
-        py_run_args.param_visibility = "fixed"
-    ...
-```
+**关键发现**：hashed 模式约 1.9 倍开销，源于 Poseidon 哈希电路额外约束；private 模式与 all_public 相当，因为不引入额外电路计算。
 
-**文件：`distributed/worker.py`**
+### 5.4 产出文件
 
-Worker 启动参数增加 `--visibility-mode`，传递给 `ezkl_init`。
-
-**文件：`scripts/run_p2_experiment.py`（新建）**
-
-实验矩阵：`{4 切片} × {all_public, hashed, private} × {正常}`
-
-### 5.4 预期产出
-
-`metrics/p2_visibility_modes.json`，包含：
-- 三种模式的 proof_gen_ms 对比
-- 三种模式的 verify_ms 对比
-- 三种模式的 proof 文件大小对比
-- 三种模式的 peak_rss_mb 对比
-
-### 5.5 风险
-
-- `hashed` 模式可能导致电路规模增大（Poseidon hash 电路额外开销），proof 时间可能翻倍
-- `private` 模式下输入不出现在公开实例中，verify 逻辑可能需要调整
-- Windows 上 EZKL 的 `hashed` 模式是否有已知 bug 需要测试
+`metrics/p2_visibility_modes.json`
 
 ---
 
@@ -257,9 +226,9 @@ C:\ZKP\
 | 证明生成时间 | proof_gen_ms | ~2000-2800ms | ~6800ms | **3638ms** |
 | 验证时间 | verify_ms | ~30-70ms | ~352ms | **65ms** |
 | 端到端延迟 | e2e_latency_ms | ~23500ms | ~7300ms | **3761ms** |
-| 峰值内存 | peak_rss_mb | ~363MB | ~261MB | ~263MB |
+| 近似 RSS 内存 | peak_rss_mb | ~363MB | ~261MB | ~263MB |
 | 吞吐量 | throughput_req_per_sec | — | 0.13 | — |
-| 恶意检测 | detection_accuracy | 100% | 100% | **100%** |
+| 恶意检测 | fault_detected | true | true | **true** |
 
 ---
 
@@ -301,7 +270,7 @@ C:\ZKP\
 
 | 对手类型 | 行为 | 本系统检测能力 |
 |---|---|---|
-| **独立恶意 (单节点)** | 单个 Worker 独立篡改输出 | ✅ 100% 检测（L2 或 L1 on ZKP node） |
+| **独立恶意 (单节点)** | 单个 Worker 独立篡改输出 | ✅ 100% 检测（当前攻击模型下：L1 输出完整性 + 首尾 proof 验证） |
 | **相邻合谋 (2节点)** | 相邻 $W_i, W_{i+1}$ 协调伪造中间值 | ⚠️ 概率性——取决于边覆盖 |
 | **全局合谋 (k节点)** | $k$ 个节点协调攻击 | ⚠️ 概率性——取决于攻击段与 ZKP 覆盖的重叠 |
 
@@ -330,15 +299,15 @@ $$P_{escape}(\ell) \leq 0.5^{\lfloor \ell / 2 \rfloor}$$
 | 3 | ≤ 25% |
 | 4 | ≤ 25% |
 
-**定理 2 (独立恶意完全检测)**:
+**定理 2 (独立恶意检测)**:
 
-对于任何独立恶意节点 $W_i$（不与其他恶意节点合谋），在 edge\_cover 策略下，
-$W_i$ 的输出至少被一个相邻的 ZKP proof 约束：
+对于任何独立恶意节点 $W_i$（不与其他恶意节点合谋）：
+- 若 $W_i \in V$（proof 节点）：proof 验证 + L1 输出完整性 → $P_{detect} = 1.0$
+- 若 $W_i \notin V$（light 节点）：L1 哈希检测 + 随机挑战 → $P_{detect}$ 取决于攻击类型
 
-$$P_{detect}^{independent} = 1.0$$
+当前攻击模型为响应层篡改（Worker 正确计算但返回篡改输出），此时 L1 `hash_out ≠ SHA256(output_data)` 即可检测，故 $P_{detect} = 1.0$。
 
-**证明**：edge\_cover 保证 $\forall$ edge $(i, i+1)$: $i \in V$ 或 $(i+1) \in V$（$V$ = ZKP 验证集）。
-因此 $W_i$ 的输出要么被自身的 proof 约束（$W_i \in V$），要么被 $W_{i+1} \in V$ 的 `processed_inputs` 约束。$\square$
+**注意**：若恶意 Worker 同时伪造 `hash_out` 和 `output_data`，则 L1 失效，需依赖 L2（相邻 proof）或随机挑战。$\square$
 
 **定理 3 (安全性下界)**:
 

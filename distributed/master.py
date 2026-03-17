@@ -333,11 +333,16 @@ def run_pipeline(
     if light_slices and len(light_slices) > 0:
         target = random.choice(light_slices)
         target_data = results[target["slice_id"] - 1]  # 0-indexed
-        print(f"\n[Master] 随机挑战 → Worker {target['slice_id']} (re_prove)")
+        target_req_id = target_data.get("request_id", "")
+        print(f"\n[Master] 随机挑战 → Worker {target['slice_id']} "
+              f"(re_prove, request_id={target_req_id})")
         try:
             resp = requests.post(
                 f"{target['url']}/re_prove",
-                json={"input_data": target_data.get("request_input", [])},
+                json={
+                    "input_data": target_data.get("request_input", []),
+                    "request_id": target_req_id,
+                },
                 timeout=180,
             )
             if resp.status_code == 200:
@@ -361,6 +366,9 @@ def run_pipeline(
 
                 challenge_result = {
                     "challenged_slice": target["slice_id"],
+                    "challenged_request_id": target_req_id,
+                    "from_cache": challenge.get("from_cache", False),
+                    "cache_consistent": challenge.get("cache_consistent"),
                     "worker_re_verified": challenge.get("verified", False),
                     "master_re_verified": master_re_verified,
                     "re_prove_ms": challenge.get("metrics", {}).get("proof_gen_ms", 0),

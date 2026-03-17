@@ -91,6 +91,7 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
         "session": session,
         "input_name": input_name,
         "slice_id": slice_id,
+        "request_cache": {},
     }
 
     @app.get("/health")
@@ -175,6 +176,19 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
 
         forward_ms = (time.perf_counter() - t_start) * 1000
 
+        # 缓存 light 请求，供 /re_prove 按 request_id 复核
+        state["request_cache"][request_id] = {
+            "input_data": list(req.input_data),
+            "hash_in": hash_in,
+            "hash_out": hash_out,
+            "output_data": output_data,
+            "timestamp": time.time(),
+        }
+        if len(state["request_cache"]) > 100:
+            oldest = min(state["request_cache"],
+                         key=lambda k: state["request_cache"][k]["timestamp"])
+            del state["request_cache"][oldest]
+
         return InferResponse(
             request_id=request_id,
             slice_id=state["slice_id"],
@@ -199,12 +213,25 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
     @app.post("/re_prove")
     def re_prove(req: InferRequest):
         """
-        Master 随机挑战：对一个之前走 /infer_light 的请求重新做 ZKP prove。
-        防止 Worker 预计算或 replay 攻击。
+        Master 随机挑战：对之前 /infer_light 的历史请求重新做 ZKP prove。
+
+        优先按 request_id 从缓存找回原始输入重证明（可追溯复核）；
+        若 request_id 不在缓存则 fallback 到 req.input_data。
         """
-        request_id = str(uuid.uuid4())[:8]
-        data_path = os.path.join(state["artifacts_dir"], f"challenge_{request_id}.json")
-        write_input_json(req.input_data, data_path)
+        cached = None
+        if req.request_id and req.request_id in state["request_cache"]:
+            cached = state["request_cache"][req.request_id]
+            challenge_input = cached["input_data"]
+        elif req.input_data:
+            challenge_input = req.input_data
+        else:
+            return {"error": "no cached request and no input_data",
+                    "slice_id": state["slice_id"]}
+
+        challenge_id = str(uuid.uuid4())[:8]
+        data_path = os.path.join(state["artifacts_dir"],
+                                 f"challenge_{challenge_id}.json")
+        write_input_json(challenge_input, data_path)
 
         result = ezkl_prove(data_path, state["paths"], state["artifacts_dir"])
 
@@ -213,12 +240,19 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
         except OSError:
             pass
 
+        cache_consistent = None
+        if cached is not None:
+            cache_consistent = (cached["hash_out"]
+                                == sha256_of_list(cached["output_data"]))
+
         return {
             "slice_id": state["slice_id"],
             "verified": result["verified"],
             "proof_instances": result.get("proof_instances"),
             "proof_artifacts": result.get("artifact_paths"),
             "metrics": result["metrics"],
+            "from_cache": cached is not None,
+            "cache_consistent": cache_consistent,
         }
 
     return app
