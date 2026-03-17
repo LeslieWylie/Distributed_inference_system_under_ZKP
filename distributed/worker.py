@@ -75,7 +75,8 @@ class InferResponse(BaseModel):
 # Worker 应用
 # ---------------------------------------------------------------------------
 
-def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> FastAPI:
+def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict,
+               artifacts_dir: str | None = None) -> FastAPI:
     """创建 FastAPI 应用。paths 由外部预初始化传入。"""
     app = FastAPI(title=f"Worker-{slice_id}")
 
@@ -83,7 +84,8 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
     onnx_abs = os.path.abspath(onnx_path)
     session = rt.InferenceSession(onnx_abs)
     input_name = session.get_inputs()[0].name
-    artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts", f"worker_{slice_id}")
+    if artifacts_dir is None:
+        artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts", f"worker_{slice_id}")
 
     state = {
         "paths": paths,
@@ -287,7 +289,8 @@ def main():
     init_ms = (time.perf_counter() - t0) * 1000
     print(f"[Worker {args.slice_id}] EZKL 初始化完成 ({init_ms:.0f} ms)")
 
-    app = create_app(args.slice_id, args.onnx, args.cal, paths)
+    app = create_app(args.slice_id, args.onnx, args.cal, paths,
+                     artifacts_dir=artifacts_dir)
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 

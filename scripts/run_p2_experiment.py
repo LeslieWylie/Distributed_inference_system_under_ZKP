@@ -105,6 +105,9 @@ def run_pipeline(workers, initial_input):
     total_verify = sum(r["metrics"]["verify_ms"] for r in results)
     max_rss = max(r["metrics"]["peak_rss_mb"] for r in results)
 
+    total_proof_bytes = sum(r["metrics"].get("proof_size_bytes", 0) for r in results)
+    total_witness_bytes = sum(r["metrics"].get("witness_size_bytes", 0) for r in results)
+
     return {
         "e2e_latency_ms": round(e2e_ms, 2),
         "total_proof_gen_ms": round(total_proof, 2),
@@ -112,12 +115,16 @@ def run_pipeline(workers, initial_input):
         "avg_proof_gen_ms": round(total_proof / len(results), 2),
         "avg_verify_ms": round(total_verify / len(results), 2),
         "peak_rss_mb": round(max_rss, 2),
+        "total_proof_size_bytes": total_proof_bytes,
+        "total_witness_size_bytes": total_witness_bytes,
         "slices": [
             {
                 "slice_id": r["slice_id"],
                 "proof_gen_ms": r["metrics"]["proof_gen_ms"],
                 "verify_ms": r["metrics"]["verify_ms"],
                 "peak_rss_mb": r["metrics"]["peak_rss_mb"],
+                "proof_size_bytes": r["metrics"].get("proof_size_bytes", 0),
+                "witness_size_bytes": r["metrics"].get("witness_size_bytes", 0),
             }
             for r in results
         ],

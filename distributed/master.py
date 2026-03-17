@@ -146,7 +146,8 @@ def run_pipeline(
     print("=" * 60)
     print("Master: 分布式推理流水线启动")
     print(f"  Workers: {num_slices}")
-    print(f"  Verify ratio: {verify_ratio:.0%} -> proof at slices {sorted(verified_set)}")
+    actual_proof_fraction = len(verified_set) / num_slices if num_slices > 0 else 0
+    print(f"  Verify ratio: {verify_ratio:.0%} (actual: {actual_proof_fraction:.0%}) -> proof at slices {sorted(verified_set)}")
     print(f"  Fault: {f'type={fault_type} at slice {fault_at}' if fault_at else 'None'}")
     if seed is not None:
         print(f"  Seed: {seed}")
@@ -408,6 +409,22 @@ def run_pipeline(
                         "input_hash_match": (original_hash_in == target_data.get("hash_in", "")),
                     }
                     print(f"    ✓ Challenge cross-check recorded")
+                # 将 from_cache / cache_consistent 纳入正式判定
+                if not challenge.get("from_cache", False):
+                    l2_findings.append({
+                        "type": "challenge_cache_miss",
+                        "slice_id": target["slice_id"],
+                        "detail": "Worker 无法从缓存找回历史请求，挑战可追溯性降级",
+                    })
+                    print(f"    ⚠ Challenge cache miss (request_id not found in Worker cache)")
+                if challenge.get("cache_consistent") is False:
+                    hash_chain_ok = False
+                    l2_findings.append({
+                        "type": "challenge_cache_inconsistent",
+                        "slice_id": target["slice_id"],
+                        "detail": "Worker 缓存的 hash_out 与 output_data 不一致",
+                    })
+                    print(f"    ⚠ Challenge cache INCONSISTENT at slice {target['slice_id']}")
                 if not master_re_verified:
                     hash_chain_ok = False
                     l2_findings.append({
@@ -450,6 +467,7 @@ def run_pipeline(
         "fault_injected_at": fault_at,
         "fault_type": fault_type if fault_at else None,
         "verify_ratio": verify_ratio,
+        "actual_proof_fraction": round(actual_proof_fraction, 4),
         "verify_strategy": verify_strategy,
         "verified_slices": sorted(verified_set),
         "seed": seed,
