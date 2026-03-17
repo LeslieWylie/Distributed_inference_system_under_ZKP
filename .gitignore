@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# EZKL artifacts (large binary files)
+artifacts/
+*.key
+*.srs
+*.compiled
+
+# ONNX model files (can be regenerated)
+models/*.onnx
+models/*.onnx.data
+models/exp_*/
+
+# Temporary data files
+models/*_tampered.json
+
+# Metrics (can be regenerated)
+metrics/
+
+# Logs
+*.log
+exp_pid.txt
+
+# IDE
+.vscode/
+.idea/
+
+# Virtual environments
+.venv*/
+conda-*/
