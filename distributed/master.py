@@ -210,11 +210,17 @@ def run_pipeline(
                 print(f"    ⚠ Master local verify error: {e}")
 
             data["verified"] = local_verified
-            if witness_path:
-                try:
-                    data["proof_instances"] = load_proof_instances_from_witness(witness_path)
-                except Exception as e:
-                    print(f"    ⚠ Failed to load witness instances: {e}")
+
+            # L2 linking 数据优先从 proof.json 的 pretty_public_inputs 提取
+            # （已被 ezkl.verify 认证），而非依赖 witness 文件
+            proof_data_for_linking = data.get("proof") or {}
+            ppi = proof_data_for_linking.get("pretty_public_inputs") or {}
+            data["proof_instances"] = {
+                "processed_inputs": ppi.get("processed_inputs") or ppi.get("inputs") or None,
+                "processed_outputs": ppi.get("processed_outputs") or ppi.get("outputs") or None,
+                "rescaled_inputs": ppi.get("rescaled_inputs") or None,
+                "rescaled_outputs": ppi.get("rescaled_outputs") or None,
+            }
 
             if not local_verified:
                 hash_chain_ok = False
@@ -380,36 +386,69 @@ def run_pipeline(
                     "output_cross_check": None,
                 }
 
-                # ── 漏洞1防御：交叉验证 ──
-                # light 节点的 L1 (hash_out == SHA256(output)) 对恶意节点无效，
-                # 因为恶意 Worker 可以同时伪造 output_data 和 hash_out。
-                # 真正的防御在这里：re_prove 产生的 proof 中，processed_outputs
-                # 是 EZKL 电路对真实计算结果的量化承诺（不可伪造）。
-                # 我们把它和 light 响应中 Worker 声称的 output_data 的哈希做比对。
-                challenge_instances = challenge.get("proof_instances") or {}
-                challenge_proc_out = challenge_instances.get("processed_outputs")
+                # ── 随机挑战交叉验证 ──
+                # light 节点的 L1 对恶意节点无效（可同时伪造 output+hash）。
+                # 真正的防御：re_prove 产生的 proof 绑定了电路级真实输出
+                # （proof.json 的 pretty_public_inputs 中的 outputs/rescaled_outputs，
+                #  或 hashed 模式下的 processed_outputs）。
+                # Master 把电路真实输出与 light 阶段 Worker 声称的 output 做比较。
+                #
+                # 从 proof.json 提取受认证的输出（不依赖 witness 文件）
+                challenge_proof = challenge.get("proof") or {}
+                challenge_ppi = challenge_proof.get("pretty_public_inputs") or {}
+                # public 模式下用 rescaled_outputs，hashed 模式下用 processed_outputs
+                circuit_outputs = (
+                    challenge_ppi.get("rescaled_outputs")
+                    or challenge_ppi.get("processed_outputs")
+                    or []
+                )
                 original_output = target_data.get("output_data", [])
                 original_hash_out = target_data.get("hash_out", "")
 
-                if challenge_proc_out is not None and original_output:
-                    # 如果 Worker 之前伪造了 output，re_prove 的电路输出
-                    # 会和声称的 output 不一致
-                    original_output_hash = sha256_of_list(original_output)
-                    # 同时比对 re_prove 的 processed_inputs 和 Master 保存的原始输入
-                    challenge_proc_in = challenge_instances.get("processed_inputs")
-                    original_input = target_data.get("request_input", [])
-                    original_input_hash = sha256_of_list(original_input) if original_input else ""
-                    original_hash_in = target_data.get("hash_in", "")
+                cross_check_passed = None
+                if circuit_outputs and original_output:
+                    # 将电路输出展平为可比较的浮点列表
+                    flat_circuit = []
+                    for group in circuit_outputs:
+                        if isinstance(group, list):
+                            for v in group:
+                                try:
+                                    flat_circuit.append(float(v))
+                                except (ValueError, TypeError):
+                                    flat_circuit.append(v)
+                        else:
+                            flat_circuit.append(group)
 
-                    # 核心判断：如果 re_prove 成功验证，但 Worker 之前声称的输出
-                    # 和真实电路输出不一致，则 Worker 在 light 阶段伪造了数据
-                    output_cross_ok = (original_hash_in == (target_data.get("hash_in", "")))
+                    # 比较电路输出与 light 阶段声称的输出
+                    if len(flat_circuit) == len(original_output):
+                        max_diff = max(
+                            abs(float(a) - float(b))
+                            for a, b in zip(flat_circuit, original_output)
+                        ) if flat_circuit else 0
+                        # EZKL 量化有精度损失，允许小误差
+                        cross_check_passed = (max_diff < 1.0)
+                    else:
+                        cross_check_passed = False
+
                     challenge_result["output_cross_check"] = {
-                        "original_hash_out": original_hash_out[:16],
-                        "challenge_processed_outputs": str(challenge_proc_out)[:64] if challenge_proc_out else None,
-                        "input_hash_match": (original_hash_in == target_data.get("hash_in", "")),
+                        "circuit_output_sample": str(flat_circuit[:4]),
+                        "claimed_output_sample": str(original_output[:4]),
+                        "max_diff": round(max_diff, 6) if cross_check_passed is not None else None,
+                        "passed": cross_check_passed,
                     }
-                    print(f"    ✓ Challenge cross-check recorded")
+
+                    if cross_check_passed is False:
+                        hash_chain_ok = False
+                        l2_findings.append({
+                            "type": "challenge_output_mismatch",
+                            "slice_id": target["slice_id"],
+                            "detail": "re_prove 电路输出与 light 阶段声称的 output 不一致",
+                        })
+                        print(f"    ⚠ Challenge OUTPUT MISMATCH at slice {target['slice_id']}")
+                    elif cross_check_passed is True:
+                        print(f"    ✓ Challenge cross-check PASSED (max_diff={max_diff:.6f})")
+                    else:
+                        print(f"    ℹ Challenge cross-check inconclusive")
                 # 将 from_cache / cache_consistent 纳入正式判定
                 if not challenge.get("from_cache", False):
                     l2_findings.append({

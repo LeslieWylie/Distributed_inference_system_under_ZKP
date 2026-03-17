@@ -109,6 +109,7 @@ tamper / skip / random / replay × {100%, 50%} 请求验证率
 
 - [DEVELOPMENT_REPORT.md](DEVELOPMENT_REPORT.md) — 环境配置、使用说明、FAQ
 - [PROJECT_PLAN.md](PROJECT_PLAN.md) — 开发计划、安全模型、检测概率推导、威胁模型
+- [survey/reference/RESEARCH_SYNTHESIS_2026-03-18.md](survey/reference/RESEARCH_SYNTHESIS_2026-03-18.md) — 外部论文、本地资料与当前实现边界的综合整理
 
 ## 参考
 

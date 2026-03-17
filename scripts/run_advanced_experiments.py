@@ -152,6 +152,8 @@ def run_single_pipeline(
     else:
         detection_accuracy = 1.0 if len(malicious_nodes) == 0 else 0.0
 
+    actual_proof_fraction = len(verified_set) / len(workers) if workers else 0
+
     return {
         "e2e_latency_ms": round(e2e_ms, 2),
         "total_proof_gen_ms": round(total_proof_ms, 2),
@@ -162,6 +164,7 @@ def run_single_pipeline(
         "fault_at": fault_at,
         "fault_type": fault_type if fault_at else None,
         "verify_ratio": verify_ratio,
+        "actual_proof_fraction": round(actual_proof_fraction, 4),
         "verified_slices": sorted(verified_set),
         "num_slices": len(workers),
         "malicious_detected": malicious_nodes,
