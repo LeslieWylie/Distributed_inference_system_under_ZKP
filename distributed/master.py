@@ -179,7 +179,8 @@ def run_pipeline(
         t0 = time.perf_counter()
         resp = requests.post(
             f"{url}{endpoint}",
-            json={"input_data": current_input, "request_id": f"req-{sid}"},
+            json={"input_data": current_input,
+                  "request_id": f"req-{sid}-{int(time.time()*1000)}"},
             params={"fault_type": ft},
             timeout=120,
         )

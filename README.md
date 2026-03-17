@@ -2,7 +2,7 @@
 
 > Distributed Inference System under Zero-Knowledge Proofs
 
-基于 DSperse 架构的分布式推理可验证性框架。将深度学习模型按层切片分配给多个 Worker 节点推理，每个 Worker 用 EZKL 生成局部 ZKP 证明，Master 通过三层校验体系（外部哈希 + ZKP Proof Linking + 哈希链）验证推理正确性并检测恶意节点。
+基于 DSperse 架构的分布式推理分层可验证性研究原型。将深度学习模型按层切片分配给多个 Worker 节点推理，每个 Worker 用 EZKL 生成局部 ZKP 证明，Master 通过分层校验体系（外部哈希 + 相邻 proof 间 ZKP Linking + 哈希链 + 随机挑战）验证推理正确性并检测恶意节点。
 
 ## 快速开始
 
@@ -83,11 +83,13 @@ $PYTHON = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 
 ### 选择性验证 (P1)
 
-| 切片数 | 验证率 | 端到端(ms) | 开销降低 | 检测率 |
+| 切片数 | 请求验证率 | 端到端(ms) | 开销降低 | 检测结果 |
 |:---:|:---:|---:|:---:|:---:|
-| 8 | 100% | 12,139 | — | 100% |
-| 8 | 50% | 6,265 | **49%** | 100% |
-| 8 | 25% | 3,761 | **68%** | 100% |
+| 8 | 100% | 12,139 | — | 检测到 |
+| 8 | 50% | 6,265 | **49%** | 检测到 |
+| 8 | 25% | 3,761 | **68%** | 检测到 |
+
+> 注：“请求验证率”为 verify_ratio 参数，实际 proof 覆盖率受 edge-cover 策略影响可能更高。检测结果为当前攻击模型（响应层篡改）下的结果。
 
 ### 隐私模式 (P2)
 
@@ -97,9 +99,11 @@ $PYTHON = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 | hashed (Poseidon) | 10,579 | 1.90× |
 | private | 5,294 | 0.95× |
 
-### 多攻击场景 (P3) — 全部 100% 检测
+### 多攻击场景 (P3) — 当前攻击模型下全部检测到
 
-tamper / skip / random / replay × {100%, 50%} 验证率
+tamper / skip / random / replay × {100%, 50%} 请求验证率
+
+> 当前攻击模型为响应层篡改（Worker 正确计算但返回篡改输出）。若恶意 Worker 同时伪造 output 和 hash，需依赖随机挑战模式检测。
 
 ## 文档
 

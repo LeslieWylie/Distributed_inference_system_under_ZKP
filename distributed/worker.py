@@ -217,18 +217,21 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict,
         """
         Master 随机挑战：对之前 /infer_light 的历史请求重新做 ZKP prove。
 
-        优先按 request_id 从缓存找回原始输入重证明（可追溯复核）；
-        若 request_id 不在缓存则 fallback 到 req.input_data。
+        严格模式：必须提供 request_id 且命中缓存，否则直接失败。
+        不再接受 fallback 到新输入——挑战必须是对历史请求的可追溯复核。
         """
-        cached = None
-        if req.request_id and req.request_id in state["request_cache"]:
-            cached = state["request_cache"][req.request_id]
-            challenge_input = cached["input_data"]
-        elif req.input_data:
-            challenge_input = req.input_data
-        else:
-            return {"error": "no cached request and no input_data",
-                    "slice_id": state["slice_id"]}
+        if not req.request_id or req.request_id not in state["request_cache"]:
+            return {
+                "error": "challenge_cache_miss",
+                "detail": f"request_id '{req.request_id}' not found in cache",
+                "slice_id": state["slice_id"],
+                "from_cache": False,
+                "cache_consistent": None,
+                "verified": False,
+            }
+
+        cached = state["request_cache"][req.request_id]
+        challenge_input = cached["input_data"]
 
         challenge_id = str(uuid.uuid4())[:8]
         data_path = os.path.join(state["artifacts_dir"],
@@ -242,10 +245,8 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict,
         except OSError:
             pass
 
-        cache_consistent = None
-        if cached is not None:
-            cache_consistent = (cached["hash_out"]
-                                == sha256_of_list(cached["output_data"]))
+        cache_consistent = (cached["hash_out"]
+                            == sha256_of_list(cached["output_data"]))
 
         return {
             "slice_id": state["slice_id"],
