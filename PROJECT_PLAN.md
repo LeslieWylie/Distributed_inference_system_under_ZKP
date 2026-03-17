@@ -2,6 +2,41 @@
 
 > 项目：面向分布式推理的零知识证明框架设计与低开销优化
 > 最后更新：2026-03-17
+> 系统定位：Sampling-based Verifiable Distributed Neural Inference with Cryptographic Linking
+
+---
+
+## 零、学术定位与相关工作
+
+### 已有范式（本系统不属于以下任何一类）
+
+| 范式 | 代表 | 与本系统的差异 |
+|---|---|---|
+| 单机推理 + ZKP | EZKL, zkCNN, RISC Zero | 单 prover，无跨节点问题 |
+| 可验证计算 (VC) | Groth16, Pinocchio | 通用 VC，不处理推理流水线 |
+| 增量可验证计算 (IVC) | Nova, SuperNova | prover 逻辑上仍是单一实体 |
+| 分布式可验证计算 | Verifiable MapReduce | 并行结构，非顺序流水线 |
+| zkRollup | zkSync, StarkNet | 独立交易，非链式状态依赖 |
+
+### 本系统所在的研究空白
+
+**当前不存在**完整实现以下组合的系统：
+- 多 Worker 独立执行推理切片
+- Worker 不可信
+- 流水线顺序依赖（$f = f_1 \circ f_2 \circ \cdots \circ f_N$）
+- 跨节点 proof linking
+- 选择性验证（概率安全模型）
+
+### 本系统的核心创新点
+
+1. **Pipeline + ZKP**：将 zkML 从单机推理扩展到多节点流水线场景
+2. **Proof Linking**：跨节点状态一致性约束（`prev.processed_outputs == curr.processed_inputs`）
+3. **Edge-Cover 安全模型**：图论级安全保证（`∀ edge (i,i+1): i ∈ ZKP ∨ (i+1) ∈ ZKP`）
+4. **Sampling Verification**：证明开销 vs 安全性的可配置 tradeoff
+
+### 一句话学术表述
+
+> 本工作将 zkML（如 EZKL）从单机推理场景扩展到多节点 pipeline 场景，引入跨节点 proof linking 和基于边覆盖的采样验证策略，实现了对分布式推理过程的可验证性保证。
 
 ---
 
@@ -258,24 +293,69 @@ C:\ZKP\
 **假设**：
 - 对手可控制最多 $k$ 个 Worker 节点（$k < N$）
 - 每个恶意 Worker 可以任意篡改其输出
-- Master 是**可信**的（诚实执行校验）
-- 网络通信**可靠**（无中间人篡改）
+- 对手**知道**验证策略（adaptive adversary）
+- Master 是**可信**的（诚实执行校验）— 这是中心化 trust assumption
+- 网络通信**可靠**（无中间人篡改，可通过 TLS 保障）
 
-**两种对手类型**：
+**三种对手类型**：
 
-| 类型 | 行为 | 本系统能力 |
+| 对手类型 | 行为 | 本系统检测能力 |
 |---|---|---|
-| **独立恶意** | 单个 Worker 独立作恶 | ✅ 100% 检测 |
-| **合谋恶意** | 相邻 Worker_i 和 Worker_{i+1} 协调伪造 | ⚠️ 依赖验证层级 |
+| **独立恶意 (单节点)** | 单个 Worker 独立篡改输出 | ✅ 100% 检测（L2 或 L1 on ZKP node） |
+| **相邻合谋 (2节点)** | 相邻 $W_i, W_{i+1}$ 协调伪造中间值 | ⚠️ 概率性——取决于边覆盖 |
+| **全局合谋 (k节点)** | $k$ 个节点协调攻击 | ⚠️ 概率性——取决于攻击段与 ZKP 覆盖的重叠 |
 
-### 9.3 三层校验体系
+**系统无法防范**：
+- Master 恶意（需去中心化 verifier 或链上验证）
+- Worker 侧信道泄露（需常量时间电路）
+- 数据隐私（需 MPC/HE，超出 Verifiable Inference 范畴）
+
+### 9.3 安全性定理（形式化）
+
+**定理 1 (Edge Coverage Safety)**:
+
+设 $N$ 为切片总数，$g$ = `max_light_gap`（默认为 1），$r$ 为验证比例。
+在 edge\_cover 策略下，对手控制一段长度为 $\ell$ 的连续切片，其攻击未被检测的概率：
+
+$$P_{escape}(\ell) \leq \left(\frac{g}{g+1}\right)^{\lfloor \ell / (g+1) \rfloor}$$
+
+当 $g = 1$（默认）时：
+
+$$P_{escape}(\ell) \leq 0.5^{\lfloor \ell / 2 \rfloor}$$
+
+| 攻击段长度 $\ell$ | $g=1$ 时 $P_{escape}$ |
+|:---:|:---:|
+| 1 | ≤ 50% |
+| 2 | ≤ 50% |
+| 3 | ≤ 25% |
+| 4 | ≤ 25% |
+
+**定理 2 (独立恶意完全检测)**:
+
+对于任何独立恶意节点 $W_i$（不与其他恶意节点合谋），在 edge\_cover 策略下，
+$W_i$ 的输出至少被一个相邻的 ZKP proof 约束：
+
+$$P_{detect}^{independent} = 1.0$$
+
+**证明**：edge\_cover 保证 $\forall$ edge $(i, i+1)$: $i \in V$ 或 $(i+1) \in V$（$V$ = ZKP 验证集）。
+因此 $W_i$ 的输出要么被自身的 proof 约束（$W_i \in V$），要么被 $W_{i+1} \in V$ 的 `processed_inputs` 约束。$\square$
+
+**定理 3 (安全性下界)**:
+
+整个流水线在 edge\_cover ($g=1$) + 随机挑战下的安全性：
+
+$$P_{detect}^{total} \geq 1 - P_{escape} \cdot (1 - P_{challenge})$$
+
+其中 $P_{challenge} = \frac{1}{|light\_nodes|}$ 为随机挑战命中概率。
+
+### 9.4 三层校验体系（精确安全等级）
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ 层 3：外部哈希链 (SHA-256)                                      │
-│   → Master 计算 SHA256(output_i) == SHA256(input_{i+1})        │
-│   → 安全级别：Master 信任级（Master 必须诚实）                    │
-│   → 抗合谋：❌ 两个 Worker 可协调伪造一致的哈希                   │
+│   → 安全等级：consistency check（非对抗安全）                     │
+│   → 功能：检测非协同的无意错误/故障                               │
+│   → 合谋可绕过：YES                                              │
 ├─────────────────────────────────────────────────────────────────┤
 │ 层 2：ZKP Proof Linking (Poseidon 哈希公开实例)                  │
 │   → proof_i.processed_outputs == proof_{i+1}.processed_inputs   │
