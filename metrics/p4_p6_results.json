@@ -1,0 +1,315 @@
+{
+  "fidelity": {
+    "2_slices": {
+      "l1_distance": 0.0,
+      "l2_distance": 0.0,
+      "max_abs_error": 0.0,
+      "mean_abs_error": 0.0,
+      "relative_error": 0.0
+    },
+    "4_slices": {
+      "l1_distance": 0.0,
+      "l2_distance": 0.0,
+      "max_abs_error": 0.0,
+      "mean_abs_error": 0.0,
+      "relative_error": 0.0
+    },
+    "8_slices": {
+      "l1_distance": 0.0,
+      "l2_distance": 0.0,
+      "max_abs_error": 0.0,
+      "mean_abs_error": 0.0,
+      "relative_error": 0.0
+    }
+  },
+  "zk_chain_comparison": [
+    {
+      "e2e_latency_ms": 9751.49,
+      "total_proof_gen_ms": 9322.78,
+      "total_verify_ms": 149.14,
+      "all_external_ok": true,
+      "all_circuit_ok": true,
+      "all_chain_ok": true,
+      "malicious_detected": [],
+      "fault_at": null,
+      "fault_type": null,
+      "checks": [
+        {
+          "slice_id": 1,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 1928.28,
+          "verify_ms": 46.18
+        },
+        {
+          "slice_id": 2,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2419.88,
+          "verify_ms": 27.11
+        },
+        {
+          "slice_id": 3,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2448.42,
+          "verify_ms": 35.69
+        },
+        {
+          "slice_id": 4,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2526.2,
+          "verify_ms": 40.16
+        }
+      ],
+      "scheme": "external_sha256",
+      "visibility_mode": "all_public"
+    },
+    {
+      "e2e_latency_ms": 11667.05,
+      "total_proof_gen_ms": 11378.99,
+      "total_verify_ms": 146.95,
+      "all_external_ok": false,
+      "all_circuit_ok": true,
+      "all_chain_ok": true,
+      "malicious_detected": [
+        4
+      ],
+      "fault_at": 4,
+      "fault_type": "tamper",
+      "checks": [
+        {
+          "slice_id": 1,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2753.1,
+          "verify_ms": 35.61
+        },
+        {
+          "slice_id": 2,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 3230.14,
+          "verify_ms": 38.11
+        },
+        {
+          "slice_id": 3,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2608.05,
+          "verify_ms": 37.97
+        },
+        {
+          "slice_id": 4,
+          "external_integrity": false,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2787.7,
+          "verify_ms": 35.26
+        }
+      ],
+      "scheme": "external_sha256",
+      "visibility_mode": "all_public"
+    },
+    {
+      "e2e_latency_ms": 14031.79,
+      "total_proof_gen_ms": 13488.36,
+      "total_verify_ms": 265.14,
+      "all_external_ok": true,
+      "all_circuit_ok": true,
+      "all_chain_ok": true,
+      "malicious_detected": [],
+      "fault_at": null,
+      "fault_type": null,
+      "checks": [
+        {
+          "slice_id": 1,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2909.87,
+          "verify_ms": 74.49
+        },
+        {
+          "slice_id": 2,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2943.14,
+          "verify_ms": 50.16
+        },
+        {
+          "slice_id": 3,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 4123.27,
+          "verify_ms": 52.54
+        },
+        {
+          "slice_id": 4,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 3512.08,
+          "verify_ms": 87.95
+        }
+      ],
+      "scheme": "in_circuit_poseidon",
+      "visibility_mode": "hashed"
+    },
+    {
+      "e2e_latency_ms": 21618.42,
+      "total_proof_gen_ms": 21062.45,
+      "total_verify_ms": 228.92,
+      "all_external_ok": false,
+      "all_circuit_ok": true,
+      "all_chain_ok": true,
+      "malicious_detected": [
+        4
+      ],
+      "fault_at": 4,
+      "fault_type": "tamper",
+      "checks": [
+        {
+          "slice_id": 1,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 5291.45,
+          "verify_ms": 50.08
+        },
+        {
+          "slice_id": 2,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 5131.63,
+          "verify_ms": 45.5
+        },
+        {
+          "slice_id": 3,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 4941.35,
+          "verify_ms": 83.31
+        },
+        {
+          "slice_id": 4,
+          "external_integrity": false,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 5698.02,
+          "verify_ms": 50.03
+        }
+      ],
+      "scheme": "in_circuit_poseidon",
+      "visibility_mode": "hashed"
+    },
+    {
+      "e2e_latency_ms": 10711.5,
+      "total_proof_gen_ms": 9977.97,
+      "total_verify_ms": 486.21,
+      "all_external_ok": true,
+      "all_circuit_ok": true,
+      "all_chain_ok": true,
+      "malicious_detected": [],
+      "fault_at": null,
+      "fault_type": null,
+      "checks": [
+        {
+          "slice_id": 1,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2450.82,
+          "verify_ms": 101.26
+        },
+        {
+          "slice_id": 2,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 3357.72,
+          "verify_ms": 293.65
+        },
+        {
+          "slice_id": 3,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2159.48,
+          "verify_ms": 44.38
+        },
+        {
+          "slice_id": 4,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2009.95,
+          "verify_ms": 46.92
+        }
+      ],
+      "scheme": "private_input",
+      "visibility_mode": "private"
+    },
+    {
+      "e2e_latency_ms": 10941.88,
+      "total_proof_gen_ms": 10523.77,
+      "total_verify_ms": 279.63,
+      "all_external_ok": false,
+      "all_circuit_ok": true,
+      "all_chain_ok": true,
+      "malicious_detected": [
+        4
+      ],
+      "fault_at": 4,
+      "fault_type": "tamper",
+      "checks": [
+        {
+          "slice_id": 1,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2142.62,
+          "verify_ms": 48.06
+        },
+        {
+          "slice_id": 2,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2966.24,
+          "verify_ms": 95.38
+        },
+        {
+          "slice_id": 3,
+          "external_integrity": true,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2632.78,
+          "verify_ms": 41.14
+        },
+        {
+          "slice_id": 4,
+          "external_integrity": false,
+          "circuit_verified": true,
+          "chain_ok": true,
+          "proof_gen_ms": 2782.13,
+          "verify_ms": 95.05
+        }
+      ],
+      "scheme": "private_input",
+      "visibility_mode": "private"
+    }
+  ]
+}

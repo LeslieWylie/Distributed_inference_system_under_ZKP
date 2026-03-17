@@ -8,9 +8,12 @@ Worker 节点：封装单个模型切片的推理 + ZKP 证明服务。
     python worker.py --slice-id 1 --port 8001 --onnx models/slice_1.onnx --cal models/slice_1_cal.json
 
 API:
-    POST /infer   — 接收输入数据，执行推理 + 证明，返回输出 + proof + metrics
-    GET  /health  — 健康检查
-    POST /infer?fault=true — 故障注入模式（篡改输出）
+    POST /infer        — 推理 + ZKP 证明（完整验证）
+    POST /infer_light  — 仅推理 + 哈希（轻量级，无 proof）
+    GET  /health       — 健康检查
+
+故障注入参数：
+    fault_type: tamper | skip | random | replay
 """
 
 import argparse
@@ -19,6 +22,8 @@ import os
 import sys
 import time
 import uuid
+
+import random as _random
 
 import numpy as np
 import torch
@@ -57,10 +62,12 @@ class InferResponse(BaseModel):
     output_data: list[float]
     hash_in: str
     hash_out: str
-    proof: dict
-    verified: bool
+    proof: dict | None = None
+    verified: bool | None = None
+    proof_instances: dict | None = None  # ZKP 公开实例（含 Poseidon 哈希）
     metrics: dict
     fault_injected: bool
+    proof_mode: str = "full"  # "full" or "light"
 
 
 # ---------------------------------------------------------------------------
@@ -89,37 +96,50 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
     def health():
         return {"status": "ok", "slice_id": slice_id}
 
+    # ----- 共用的推理 + 故障注入逻辑 -----
+    def _do_inference(req: InferRequest, fault_type: str | None = None):
+        """执行 ONNX 推理并可选地注入故障。返回 (output_data, hash_in, hash_out, fault_injected)。"""
+        hash_in = sha256_of_list(req.input_data)
+
+        # ONNX 前向推理
+        input_array = np.array([req.input_data], dtype=np.float32)
+        ort_output = state["session"].run(None, {state["input_name"]: input_array})
+        correct_output = ort_output[0].flatten().tolist()
+
+        # hash_out 始终基于正确推理结果
+        hash_out = sha256_of_list(correct_output)
+
+        # 故障注入
+        output_data = list(correct_output)
+        fault_injected = False
+        if fault_type and fault_type != "none":
+            fault_injected = True
+            if fault_type == "tamper":
+                output_data[0] += 999.0
+            elif fault_type == "skip":
+                output_data = [0.0] * len(output_data)
+            elif fault_type == "random":
+                output_data = [_random.uniform(-10, 10) for _ in output_data]
+            elif fault_type == "replay":
+                output_data = [0.42] * len(output_data)
+
+        return output_data, hash_in, hash_out, fault_injected
+
+    # ----- /infer: 完整验证（推理 + ZKP proof） -----
     @app.post("/infer", response_model=InferResponse)
-    def infer(req: InferRequest, fault: bool = Query(False)):
+    def infer(req: InferRequest, fault_type: str = Query("none")):
         request_id = req.request_id or str(uuid.uuid4())[:8]
         t_start = time.perf_counter()
 
-        # 输入哈希
-        hash_in = sha256_of_list(req.input_data)
+        output_data, hash_in, hash_out, fault_injected = _do_inference(req, fault_type)
 
-        # 1. ONNX 前向推理
-        input_array = np.array([req.input_data], dtype=np.float32)
-        ort_output = state["session"].run(None, {state["input_name"]: input_array})
-        output_data = ort_output[0].flatten().tolist()
-
-        # 输出哈希 — 始终基于正确的推理结果（与 proof 承诺一致）
-        hash_out = sha256_of_list(ort_output[0].flatten().tolist())
-
-        # 2. 故障注入：篡改返回给 Master 的输出数据
-        #    但 hash_out 仍基于正确结果，模拟恶意节点返回错误数据
-        fault_injected = False
-        if fault:
-            output_data[0] += 999.0
-            fault_injected = True
-
-        # 3. 写入输入数据文件供 EZKL 使用
+        # 写入输入数据文件供 EZKL 使用
         data_path = os.path.join(state["artifacts_dir"], f"input_{request_id}.json")
         write_input_json(req.input_data, data_path)
 
-        # 4. 生成 proof
+        # 生成 proof
         result = ezkl_prove(data_path, state["paths"], state["artifacts_dir"])
 
-        # 清理临时输入文件
         try:
             os.remove(data_path)
         except OSError:
@@ -137,8 +157,39 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
             hash_out=hash_out,
             proof=result["proof"],
             verified=result["verified"],
+            proof_instances=result.get("proof_instances"),
             metrics=result["metrics"],
             fault_injected=fault_injected,
+            proof_mode="full",
+        )
+
+    # ----- /infer_light: 轻量级（仅推理 + 哈希，无 proof） -----
+    @app.post("/infer_light", response_model=InferResponse)
+    def infer_light(req: InferRequest, fault_type: str = Query("none")):
+        request_id = req.request_id or str(uuid.uuid4())[:8]
+        t_start = time.perf_counter()
+
+        output_data, hash_in, hash_out, fault_injected = _do_inference(req, fault_type)
+
+        forward_ms = (time.perf_counter() - t_start) * 1000
+
+        return InferResponse(
+            request_id=request_id,
+            slice_id=state["slice_id"],
+            output_data=output_data,
+            hash_in=hash_in,
+            hash_out=hash_out,
+            proof=None,
+            verified=None,
+            metrics={
+                "proof_gen_ms": 0.0,
+                "verify_ms": 0.0,
+                "forward_ms": round(forward_ms, 2),
+                "peak_rss_mb": round(get_memory_mb(), 2),
+                "request_id": request_id,
+            },
+            fault_injected=fault_injected,
+            proof_mode="light",
         )
 
     return app
@@ -155,6 +206,9 @@ def main():
     parser.add_argument("--onnx", type=str, required=True)
     parser.add_argument("--cal", type=str, required=True)
     parser.add_argument("--host", type=str, default="127.0.0.1")
+    parser.add_argument("--visibility-mode", type=str, default="all_public",
+                        choices=["all_public", "hashed", "private"],
+                        help="EZKL visibility mode for privacy level")
     args = parser.parse_args()
 
     # EZKL 初始化在 uvicorn 启动前（无事件循环冲突）
@@ -162,9 +216,10 @@ def main():
     cal_abs = os.path.abspath(args.cal)
     artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts", f"worker_{args.slice_id}")
 
-    print(f"[Worker {args.slice_id}] 初始化 EZKL...")
+    print(f"[Worker {args.slice_id}] 初始化 EZKL (mode={args.visibility_mode})...")
     t0 = time.perf_counter()
-    paths = ezkl_init(onnx_abs, cal_abs, artifacts_dir)
+    paths = ezkl_init(onnx_abs, cal_abs, artifacts_dir,
+                      visibility_mode=args.visibility_mode)
     init_ms = (time.perf_counter() - t0) * 1000
     print(f"[Worker {args.slice_id}] EZKL 初始化完成 ({init_ms:.0f} ms)")
 

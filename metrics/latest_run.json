@@ -1,0 +1,26 @@
+{
+  "e2e_latency_ms": 23479.48,
+  "slices": [
+    {
+      "slice_id": 1,
+      "proof_gen_ms": 2062.82,
+      "verify_ms": 71.79,
+      "peak_rss_mb": 362.14
+    },
+    {
+      "slice_id": 2,
+      "proof_gen_ms": 2765.45,
+      "verify_ms": 31.22,
+      "peak_rss_mb": 362.69
+    }
+  ],
+  "hash_chain": {
+    "hash_out_slice1": "1221885dc0ec97bbcb6cf3ea08d24965a8b62b6acd48c8d0cc273df7cdb579f8",
+    "hash_in_slice2": "1221885dc0ec97bbcb6cf3ea08d24965a8b62b6acd48c8d0cc273df7cdb579f8",
+    "consistency_ok": true
+  },
+  "fault_injection": {
+    "malicious_detected": true,
+    "detection_accuracy": 1.0
+  }
+}

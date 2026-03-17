@@ -45,10 +45,16 @@ def get_memory_mb() -> float:
 # EZKL 初始化（gen_settings → calibrate → compile → get_srs → setup）
 # ---------------------------------------------------------------------------
 
-def ezkl_init(onnx_path: str, cal_path: str, artifacts_dir: str) -> dict:
+def ezkl_init(onnx_path: str, cal_path: str, artifacts_dir: str,
+              visibility_mode: str = "all_public") -> dict:
     """
     对一个 ONNX 切片执行 EZKL 的一次性初始化流程，生成所有密钥和编译产物。
     只需在 Worker 启动时调用一次。
+
+    visibility_mode:
+        "all_public" — 输入输出公开，参数固定（默认，无隐私保护）
+        "hashed"     — 输入和参数以 Poseidon 哈希形式暴露（隐私保护）
+        "private"    — 输入完全不可见（最强隐私）
 
     返回路径字典供后续 prove/verify 使用。
     """
@@ -63,11 +69,20 @@ def ezkl_init(onnx_path: str, cal_path: str, artifacts_dir: str) -> dict:
         "srs": os.path.join(artifacts_dir, "kzg.srs"),
     }
 
-    # 1. gen_settings
+    # 1. gen_settings — 根据 visibility_mode 设置可见性
     py_run_args = ezkl.PyRunArgs()
-    py_run_args.input_visibility = "public"
-    py_run_args.output_visibility = "public"
-    py_run_args.param_visibility = "fixed"
+    if visibility_mode == "hashed":
+        py_run_args.input_visibility = "hashed"
+        py_run_args.output_visibility = "public"
+        py_run_args.param_visibility = "hashed"
+    elif visibility_mode == "private":
+        py_run_args.input_visibility = "private"
+        py_run_args.output_visibility = "public"
+        py_run_args.param_visibility = "fixed"
+    else:  # all_public
+        py_run_args.input_visibility = "public"
+        py_run_args.output_visibility = "public"
+        py_run_args.param_visibility = "fixed"
     assert ezkl.gen_settings(onnx_path, paths["settings"], py_run_args=py_run_args)
 
     # 2. calibrate_settings
@@ -106,6 +121,10 @@ def ezkl_init(onnx_path: str, cal_path: str, artifacts_dir: str) -> dict:
 def ezkl_prove(data_path: str, paths: dict, artifacts_dir: str) -> dict:
     """
     对给定输入执行 prove + verify，返回 proof 内容和 metrics。
+
+    关键：从 witness 中提取 processed_inputs/processed_outputs，
+    这些是 ZKP 公开实例中的 Poseidon 哈希（hashed 模式下）或原始值（public 模式下）。
+    proof linking 依赖这些值的跨切片比对。
     """
     artifacts_dir = os.path.abspath(artifacts_dir)
     witness_path = os.path.join(artifacts_dir, "witness.json")
@@ -113,8 +132,20 @@ def ezkl_prove(data_path: str, paths: dict, artifacts_dir: str) -> dict:
 
     mem_start = get_memory_mb()
 
-    # gen_witness
+    # gen_witness — 产生 witness 文件，包含 processed_inputs/processed_outputs
     ezkl.gen_witness(data_path, paths["compiled"], witness_path)
+
+    # 提取 witness 中的公开实例（proof linking 的关键数据）
+    with open(witness_path, "r") as f:
+        witness_data = json.load(f)
+
+    # processed_inputs/processed_outputs 是 ZKP 公开实例
+    # 在 hashed 模式下 = Poseidon hash（电路内部计算，不可伪造）
+    # 在 public 模式下 = 原始量化值
+    proof_instances = {
+        "processed_inputs": witness_data.get("processed_inputs", None),
+        "processed_outputs": witness_data.get("processed_outputs", None),
+    }
 
     # prove
     t0 = time.perf_counter()
@@ -136,6 +167,7 @@ def ezkl_prove(data_path: str, paths: dict, artifacts_dir: str) -> dict:
         "proof": proof_data,
         "proof_path": proof_path,
         "verified": verified,
+        "proof_instances": proof_instances,
         "metrics": {
             "proof_gen_ms": round(proof_gen_ms, 2),
             "verify_ms": round(verify_ms, 2),

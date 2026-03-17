@@ -12,7 +12,9 @@ Master 按顺序把输入喂给 Worker 1 → Worker 2 → ... → Worker N，
 
 import argparse
 import json
+import math
 import os
+import random
 import sys
 import time
 
@@ -38,10 +40,30 @@ DEFAULT_WORKERS = [
 # Master 核心逻辑
 # ---------------------------------------------------------------------------
 
+def _select_verified_slices(num_slices: int, verify_ratio: float) -> set[int]:
+    """
+    选择哪些切片做完整 ZKP 验证。
+    策略：首尾切片必须验证，中间按比例随机选。
+    """
+    all_ids = list(range(1, num_slices + 1))
+    if verify_ratio >= 1.0:
+        return set(all_ids)
+
+    # 首尾必选
+    must = {1, num_slices}
+    middle = [i for i in all_ids if i not in must]
+    k = max(0, round(len(all_ids) * verify_ratio) - len(must))
+    k = min(k, len(middle))
+    selected = must | set(random.sample(middle, k))
+    return selected
+
+
 def run_pipeline(
     initial_input: list[float],
     workers: list[dict],
     fault_at: int | None = None,
+    fault_type: str = "tamper",
+    verify_ratio: float = 1.0,
 ) -> dict:
     """
     按流水线顺序调用各 Worker，收集结果并执行哈希链校验。
@@ -50,14 +72,20 @@ def run_pipeline(
         initial_input: 第一个切片的输入数据
         workers: Worker 配置列表 [{"slice_id": 1, "url": "http://..."}]
         fault_at: 在哪个 slice_id 上注入故障（None 表示不注入）
+        fault_type: 故障类型 tamper/skip/random/replay
+        verify_ratio: 做完整 ZKP 验证的切片比例 (0.0-1.0)
 
     返回:
         包含所有结果和指标的字典。
     """
+    num_slices = len(workers)
+    verified_set = _select_verified_slices(num_slices, verify_ratio)
+
     print("=" * 60)
     print("Master: 分布式推理流水线启动")
-    print(f"  Workers: {len(workers)}")
-    print(f"  Fault injection at slice: {fault_at or 'None'}")
+    print(f"  Workers: {num_slices}")
+    print(f"  Verify ratio: {verify_ratio:.0%} -> proof at slices {sorted(verified_set)}")
+    print(f"  Fault: {f'type={fault_type} at slice {fault_at}' if fault_at else 'None'}")
     print("=" * 60)
 
     e2e_start = time.perf_counter()
@@ -70,17 +98,22 @@ def run_pipeline(
     for i, worker in enumerate(workers):
         sid = worker["slice_id"]
         url = worker["url"]
-        inject = (fault_at == sid)
+        use_proof = (sid in verified_set)
+        inject_fault = (fault_at == sid)
+        ft = fault_type if inject_fault else "none"
 
-        print(f"\n[Master] -> Worker {sid} ({url})"
-              + (" [FAULT INJECT]" if inject else ""))
+        endpoint = "/infer" if use_proof else "/infer_light"
+        mode_tag = "PROOF" if use_proof else "LIGHT"
+
+        print(f"\n[Master] -> Worker {sid} ({url}) [{mode_tag}]"
+              + (f" [FAULT: {fault_type}]" if inject_fault else ""))
 
         # 发起推理请求
         t0 = time.perf_counter()
         resp = requests.post(
-            f"{url}/infer",
+            f"{url}{endpoint}",
             json={"input_data": current_input, "request_id": f"req-{sid}"},
-            params={"fault": str(inject).lower()},
+            params={"fault_type": ft},
             timeout=120,
         )
         rtt_ms = (time.perf_counter() - t0) * 1000
@@ -94,22 +127,61 @@ def run_pipeline(
         print(f"    hash_out: {data['hash_out'][:16]}...")
         print(f"    verified: {data['verified']}")
 
-        # ── 输出完整性校验：hash_out 必须等于 output_data 的实际哈希 ──
+        # ══════════════════════════════════════════════════════════
+        # 三层校验体系
+        # ══════════════════════════════════════════════════════════
+
+        # 层 1：输出完整性校验 (外部 SHA-256)
+        #   → Worker 返回的 output_data 的哈希必须等于 hash_out
+        #   → 检测：Worker 篡改 output_data 但保留正确 hash_out
         actual_output_hash = sha256_of_list(data["output_data"])
         output_integrity = (data["hash_out"] == actual_output_hash)
         if not output_integrity:
             hash_chain_ok = False
             malicious_nodes.append({
                 "type": "output_tamper",
+                "layer": "L1_external_hash",
                 "slice_id": sid,
                 "expected": data["hash_out"][:16],
                 "actual": actual_output_hash[:16],
             })
-            print(f"    ⚠ OUTPUT TAMPER at slice {sid}: hash_out != hash(output_data)")
+            print(f"    ⚠ L1 OUTPUT TAMPER at slice {sid}")
         else:
-            print(f"    ✓ Output integrity OK (slice {sid})")
+            print(f"    ✓ L1 Output integrity OK (slice {sid})")
 
-        # ── 哈希链校验：前一个 Worker 的输出 hash == 当前 Worker 的输入 hash ──
+        # 层 2：ZKP Proof Linking (电路内 Poseidon 哈希)
+        #   → 如果当前切片和上一个切片都有 proof_instances，
+        #     则比对 prev.processed_outputs == curr.processed_inputs
+        #   → 这是 ZKP 公开实例，verify 通过 = 数学保证正确
+        #   → 不可被 Worker 伪造（哈希在算术电路内计算）
+        if i > 0 and use_proof:
+            prev = results[-1]
+            prev_instances = prev.get("proof_instances")
+            curr_instances = data.get("proof_instances")
+
+            if prev_instances and curr_instances:
+                prev_out = prev_instances.get("processed_outputs")
+                curr_in = curr_instances.get("processed_inputs")
+                if prev_out is not None and curr_in is not None:
+                    proof_linked = (prev_out == curr_in)
+                    if not proof_linked:
+                        hash_chain_ok = False
+                        malicious_nodes.append({
+                            "type": "proof_link_break",
+                            "layer": "L2_zkp_linking",
+                            "between": [prev["slice_id"], sid],
+                        })
+                        print(f"    ⚠ L2 PROOF LINK BREAK: slice {prev['slice_id']} → {sid} "
+                              f"(ZKP instances mismatch)")
+                    else:
+                        print(f"    ✓ L2 Proof linked OK (slice {prev['slice_id']} → {sid})")
+                else:
+                    print(f"    ℹ L2 Skip (no processed instances)")
+            else:
+                print(f"    ℹ L2 Skip (proof_instances not available)")
+
+        # 层 3：外部哈希链 (传统 SHA-256 fallback)
+        #   → 作为 L2 不可用时的退化方案
         if i > 0:
             prev = results[-1]
             expected_hash = prev["hash_out"]
@@ -163,9 +235,13 @@ def run_pipeline(
         "malicious_nodes": malicious_nodes,
         "detection_accuracy": detection_accuracy,
         "fault_injected_at": fault_at,
+        "fault_type": fault_type if fault_at else None,
+        "verify_ratio": verify_ratio,
+        "verified_slices": sorted(verified_set),
         "slices": [
             {
                 "slice_id": r["slice_id"],
+                "proof_mode": r.get("proof_mode", "full"),
                 "proof_gen_ms": r["metrics"]["proof_gen_ms"],
                 "verify_ms": r["metrics"]["verify_ms"],
                 "rtt_ms": r["metrics"]["rtt_ms"],
@@ -215,6 +291,11 @@ def main():
     parser = argparse.ArgumentParser(description="ZKP Master Orchestrator")
     parser.add_argument("--fault-at", type=int, default=None,
                         help="Inject fault at this slice_id")
+    parser.add_argument("--fault-type", type=str, default="tamper",
+                        choices=["tamper", "skip", "random", "replay"],
+                        help="Type of fault to inject")
+    parser.add_argument("--verify-ratio", type=float, default=1.0,
+                        help="Fraction of slices to verify with ZKP (0.0-1.0)")
     parser.add_argument("--workers", type=str, default=None,
                         help="JSON file with worker config (optional)")
     parser.add_argument("--input", type=str, default=None,
@@ -254,7 +335,8 @@ def main():
         with open(default_input_path) as f:
             initial_input = json.load(f)["input_data"][0]
 
-    run_pipeline(initial_input, workers, fault_at=args.fault_at)
+    run_pipeline(initial_input, workers, fault_at=args.fault_at,
+                 fault_type=args.fault_type, verify_ratio=args.verify_ratio)
 
 
 if __name__ == "__main__":

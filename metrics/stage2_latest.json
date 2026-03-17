@@ -1,0 +1,37 @@
+{
+  "e2e_latency_ms": 2271.78,
+  "hash_chain_ok": false,
+  "malicious_nodes": [
+    {
+      "type": "output_tamper",
+      "slice_id": 2,
+      "expected": "e3921184565d691b",
+      "actual": "dc656eab0306d2ef"
+    }
+  ],
+  "detection_accuracy": 1.0,
+  "fault_injected_at": 2,
+  "slices": [
+    {
+      "slice_id": 1,
+      "proof_gen_ms": 1059.6,
+      "verify_ms": 28.02,
+      "rtt_ms": 1111.8,
+      "peak_rss_mb": 260.83,
+      "fault_injected": false
+    },
+    {
+      "slice_id": 2,
+      "proof_gen_ms": 1095.46,
+      "verify_ms": 51.16,
+      "rtt_ms": 1157.84,
+      "peak_rss_mb": 262.39,
+      "fault_injected": true
+    }
+  ],
+  "final_output": [
+    999.0328111611307,
+    0.30732792615890503,
+    0.07094553112983704
+  ]
+}

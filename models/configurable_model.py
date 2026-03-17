@@ -137,14 +137,27 @@ def split_and_export(
         current_input = slice_output
         layer_idx = end_idx
 
-    # 验证切片组合 == 完整模型
+    # 验证切片组合 == 完整模型 + 保真度计算 (Fidelity)
     with torch.no_grad():
         full_output = model(dummy_input)
     final_slice_output = torch.tensor(intermediates[-1])
+
+    # DSperse 论文 Page 4: 计算切片输出与完整模型输出的 L1/L2 距离
+    diff = final_slice_output - full_output
+    fidelity = {
+        "l1_distance": float(torch.abs(diff).sum()),
+        "l2_distance": float(torch.norm(diff, p=2)),
+        "max_abs_error": float(torch.abs(diff).max()),
+        "mean_abs_error": float(torch.abs(diff).mean()),
+        "relative_error": float(torch.norm(diff, p=2) / (torch.norm(full_output, p=2) + 1e-10)),
+    }
+
     assert torch.allclose(final_slice_output, full_output, atol=1e-5), \
-        "切片组合输出与完整模型不一致!"
+        "切片组合输出与完整模型输出不一致!"
 
     print(f"[Model] {num_slices} 切片导出完成 ({num_layers} 层)")
+    print(f"[Fidelity] L1={fidelity['l1_distance']:.2e}  L2={fidelity['l2_distance']:.2e}  "
+          f"MaxErr={fidelity['max_abs_error']:.2e}  RelErr={fidelity['relative_error']:.2e}")
     for s in slices_info:
         print(f"  Slice {s['id']}: {s['onnx']}")
 
@@ -153,6 +166,9 @@ def split_and_export(
         "intermediates": intermediates,
         "input": dummy_input.detach().numpy(),
         "num_slices": num_slices,
+        "fidelity": fidelity,
+        "full_output": full_output.detach().numpy().tolist(),
+        "sliced_output": final_slice_output.detach().numpy().tolist(),
     }
 
 

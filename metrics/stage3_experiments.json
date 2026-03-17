@@ -1,0 +1,278 @@
+[
+  {
+    "e2e_latency_ms": 17960.76,
+    "total_proof_gen_ms": 17426.02,
+    "total_verify_ms": 261.09,
+    "avg_proof_gen_ms": 8713.01,
+    "avg_verify_ms": 130.55,
+    "peak_rss_mb": 259.59,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "malicious_detected": [],
+    "slices": [
+      {
+        "slice_id": 1,
+        "proof_gen_ms": 9441.54,
+        "verify_ms": 177.53,
+        "peak_rss_mb": 259.59
+      },
+      {
+        "slice_id": 2,
+        "proof_gen_ms": 7984.48,
+        "verify_ms": 83.56,
+        "peak_rss_mb": 258.52
+      }
+    ],
+    "experiment": "2s_normal",
+    "num_slices": 2,
+    "throughput_req_per_sec": 0.2895
+  },
+  {
+    "e2e_latency_ms": 5377.98,
+    "total_proof_gen_ms": 5142.1,
+    "total_verify_ms": 80.05,
+    "avg_proof_gen_ms": 2571.05,
+    "avg_verify_ms": 40.02,
+    "peak_rss_mb": 261.84,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 2,
+    "malicious_detected": [
+      2
+    ],
+    "slices": [
+      {
+        "slice_id": 1,
+        "proof_gen_ms": 3762.57,
+        "verify_ms": 42.36,
+        "peak_rss_mb": 261.84
+      },
+      {
+        "slice_id": 2,
+        "proof_gen_ms": 1379.53,
+        "verify_ms": 37.69,
+        "peak_rss_mb": 261.77
+      }
+    ],
+    "experiment": "2s_fault_last",
+    "num_slices": 2,
+    "throughput_req_per_sec": 0.2895
+  },
+  {
+    "e2e_latency_ms": 7321.53,
+    "total_proof_gen_ms": 6824.84,
+    "total_verify_ms": 351.7,
+    "avg_proof_gen_ms": 1706.21,
+    "avg_verify_ms": 87.92,
+    "peak_rss_mb": 261.03,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "malicious_detected": [],
+    "slices": [
+      {
+        "slice_id": 1,
+        "proof_gen_ms": 1949.05,
+        "verify_ms": 76.98,
+        "peak_rss_mb": 259.74
+      },
+      {
+        "slice_id": 2,
+        "proof_gen_ms": 1526.99,
+        "verify_ms": 69.37,
+        "peak_rss_mb": 261.03
+      },
+      {
+        "slice_id": 3,
+        "proof_gen_ms": 1845.83,
+        "verify_ms": 173.53,
+        "peak_rss_mb": 260.5
+      },
+      {
+        "slice_id": 4,
+        "proof_gen_ms": 1502.97,
+        "verify_ms": 31.82,
+        "peak_rss_mb": 259.11
+      }
+    ],
+    "experiment": "4s_normal",
+    "num_slices": 4,
+    "throughput_req_per_sec": 0.132
+  },
+  {
+    "e2e_latency_ms": 7234.41,
+    "total_proof_gen_ms": 6902.64,
+    "total_verify_ms": 163.08,
+    "avg_proof_gen_ms": 1725.66,
+    "avg_verify_ms": 40.77,
+    "peak_rss_mb": 261.69,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "malicious_detected": [
+      4
+    ],
+    "slices": [
+      {
+        "slice_id": 1,
+        "proof_gen_ms": 1797.03,
+        "verify_ms": 30.49,
+        "peak_rss_mb": 261.29
+      },
+      {
+        "slice_id": 2,
+        "proof_gen_ms": 1504.9,
+        "verify_ms": 24.55,
+        "peak_rss_mb": 261.69
+      },
+      {
+        "slice_id": 3,
+        "proof_gen_ms": 1714.74,
+        "verify_ms": 70.95,
+        "peak_rss_mb": 261.37
+      },
+      {
+        "slice_id": 4,
+        "proof_gen_ms": 1885.97,
+        "verify_ms": 37.09,
+        "peak_rss_mb": 261.12
+      }
+    ],
+    "experiment": "4s_fault_last",
+    "num_slices": 4,
+    "throughput_req_per_sec": 0.132
+  },
+  {
+    "e2e_latency_ms": 14040.79,
+    "total_proof_gen_ms": 13456.62,
+    "total_verify_ms": 358.56,
+    "avg_proof_gen_ms": 1682.08,
+    "avg_verify_ms": 44.82,
+    "peak_rss_mb": 263.73,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "malicious_detected": [],
+    "slices": [
+      {
+        "slice_id": 1,
+        "proof_gen_ms": 1695.59,
+        "verify_ms": 74.53,
+        "peak_rss_mb": 258.2
+      },
+      {
+        "slice_id": 2,
+        "proof_gen_ms": 1856.34,
+        "verify_ms": 54.78,
+        "peak_rss_mb": 258.91
+      },
+      {
+        "slice_id": 3,
+        "proof_gen_ms": 1586.51,
+        "verify_ms": 31.79,
+        "peak_rss_mb": 260.02
+      },
+      {
+        "slice_id": 4,
+        "proof_gen_ms": 1861.36,
+        "verify_ms": 30.97,
+        "peak_rss_mb": 258.22
+      },
+      {
+        "slice_id": 5,
+        "proof_gen_ms": 1628.67,
+        "verify_ms": 67.47,
+        "peak_rss_mb": 263.73
+      },
+      {
+        "slice_id": 6,
+        "proof_gen_ms": 1474.06,
+        "verify_ms": 26.2,
+        "peak_rss_mb": 261.94
+      },
+      {
+        "slice_id": 7,
+        "proof_gen_ms": 1554.36,
+        "verify_ms": 43.26,
+        "peak_rss_mb": 262.98
+      },
+      {
+        "slice_id": 8,
+        "proof_gen_ms": 1799.73,
+        "verify_ms": 29.56,
+        "peak_rss_mb": 260.92
+      }
+    ],
+    "experiment": "8s_normal",
+    "num_slices": 8,
+    "throughput_req_per_sec": 0.0736
+  },
+  {
+    "e2e_latency_ms": 12336.93,
+    "total_proof_gen_ms": 11826.7,
+    "total_verify_ms": 323.9,
+    "avg_proof_gen_ms": 1478.34,
+    "avg_verify_ms": 40.49,
+    "peak_rss_mb": 265.05,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 8,
+    "malicious_detected": [
+      8
+    ],
+    "slices": [
+      {
+        "slice_id": 1,
+        "proof_gen_ms": 1461.29,
+        "verify_ms": 29.11,
+        "peak_rss_mb": 259.76
+      },
+      {
+        "slice_id": 2,
+        "proof_gen_ms": 1316.98,
+        "verify_ms": 48.88,
+        "peak_rss_mb": 261.49
+      },
+      {
+        "slice_id": 3,
+        "proof_gen_ms": 1570.2,
+        "verify_ms": 33.34,
+        "peak_rss_mb": 261.31
+      },
+      {
+        "slice_id": 4,
+        "proof_gen_ms": 1395.89,
+        "verify_ms": 34.06,
+        "peak_rss_mb": 260.12
+      },
+      {
+        "slice_id": 5,
+        "proof_gen_ms": 1467.64,
+        "verify_ms": 78.93,
+        "peak_rss_mb": 264.77
+      },
+      {
+        "slice_id": 6,
+        "proof_gen_ms": 1480.38,
+        "verify_ms": 35.17,
+        "peak_rss_mb": 263.29
+      },
+      {
+        "slice_id": 7,
+        "proof_gen_ms": 1476.96,
+        "verify_ms": 36.39,
+        "peak_rss_mb": 265.05
+      },
+      {
+        "slice_id": 8,
+        "proof_gen_ms": 1657.36,
+        "verify_ms": 28.02,
+        "peak_rss_mb": 264.75
+      }
+    ],
+    "experiment": "8s_fault_last",
+    "num_slices": 8,
+    "throughput_req_per_sec": 0.0736
+  }
+]

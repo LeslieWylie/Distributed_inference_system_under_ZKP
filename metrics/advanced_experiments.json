@@ -1,0 +1,418 @@
+[
+  {
+    "e2e_latency_ms": 5600.76,
+    "total_proof_gen_ms": 5146.38,
+    "total_verify_ms": 207.82,
+    "peak_rss_mb": 261.22,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "fault_type": null,
+    "verify_ratio": 1.0,
+    "verified_slices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [],
+    "experiment": "P1_4s_vr1.00_normal"
+  },
+  {
+    "e2e_latency_ms": 6553.04,
+    "total_proof_gen_ms": 6194.1,
+    "total_verify_ms": 178.31,
+    "peak_rss_mb": 263.38,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "tamper",
+    "verify_ratio": 1.0,
+    "verified_slices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P1_4s_vr1.00_fault"
+  },
+  {
+    "e2e_latency_ms": 3477.06,
+    "total_proof_gen_ms": 3311.62,
+    "total_verify_ms": 84.21,
+    "peak_rss_mb": 263.42,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "fault_type": null,
+    "verify_ratio": 0.5,
+    "verified_slices": [
+      1,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [],
+    "experiment": "P1_4s_vr0.50_normal"
+  },
+  {
+    "e2e_latency_ms": 3718.21,
+    "total_proof_gen_ms": 3576.95,
+    "total_verify_ms": 89.26,
+    "peak_rss_mb": 263.45,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "tamper",
+    "verify_ratio": 0.5,
+    "verified_slices": [
+      1,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P1_4s_vr0.50_fault"
+  },
+  {
+    "e2e_latency_ms": 4334.23,
+    "total_proof_gen_ms": 4132.28,
+    "total_verify_ms": 111.59,
+    "peak_rss_mb": 263.59,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "fault_type": null,
+    "verify_ratio": 0.25,
+    "verified_slices": [
+      1,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [],
+    "experiment": "P1_4s_vr0.25_normal"
+  },
+  {
+    "e2e_latency_ms": 4015.71,
+    "total_proof_gen_ms": 3825.31,
+    "total_verify_ms": 70.99,
+    "peak_rss_mb": 269.52,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "tamper",
+    "verify_ratio": 0.25,
+    "verified_slices": [
+      1,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P1_4s_vr0.25_fault"
+  },
+  {
+    "e2e_latency_ms": 12139.24,
+    "total_proof_gen_ms": 11447.86,
+    "total_verify_ms": 461.5,
+    "peak_rss_mb": 262.46,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "fault_type": null,
+    "verify_ratio": 1.0,
+    "verified_slices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "num_slices": 8,
+    "malicious_detected": [],
+    "experiment": "P1_8s_vr1.00_normal"
+  },
+  {
+    "e2e_latency_ms": 13831.7,
+    "total_proof_gen_ms": 12881.4,
+    "total_verify_ms": 550.06,
+    "peak_rss_mb": 262.68,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 8,
+    "fault_type": "tamper",
+    "verify_ratio": 1.0,
+    "verified_slices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "num_slices": 8,
+    "malicious_detected": [
+      8
+    ],
+    "experiment": "P1_8s_vr1.00_fault"
+  },
+  {
+    "e2e_latency_ms": 6264.66,
+    "total_proof_gen_ms": 5801.53,
+    "total_verify_ms": 201.32,
+    "peak_rss_mb": 261.9,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "fault_type": null,
+    "verify_ratio": 0.5,
+    "verified_slices": [
+      1,
+      5,
+      7,
+      8
+    ],
+    "num_slices": 8,
+    "malicious_detected": [],
+    "experiment": "P1_8s_vr0.50_normal"
+  },
+  {
+    "e2e_latency_ms": 6993.83,
+    "total_proof_gen_ms": 6521.08,
+    "total_verify_ms": 231.49,
+    "peak_rss_mb": 263.31,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 8,
+    "fault_type": "tamper",
+    "verify_ratio": 0.5,
+    "verified_slices": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "num_slices": 8,
+    "malicious_detected": [
+      8
+    ],
+    "experiment": "P1_8s_vr0.50_fault"
+  },
+  {
+    "e2e_latency_ms": 3760.52,
+    "total_proof_gen_ms": 3638.14,
+    "total_verify_ms": 65.35,
+    "peak_rss_mb": 263.87,
+    "hash_chain_ok": true,
+    "detection_accuracy": 1.0,
+    "fault_at": null,
+    "fault_type": null,
+    "verify_ratio": 0.25,
+    "verified_slices": [
+      1,
+      8
+    ],
+    "num_slices": 8,
+    "malicious_detected": [],
+    "experiment": "P1_8s_vr0.25_normal"
+  },
+  {
+    "e2e_latency_ms": 3510.38,
+    "total_proof_gen_ms": 3316.66,
+    "total_verify_ms": 70.99,
+    "peak_rss_mb": 265.89,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 8,
+    "fault_type": "tamper",
+    "verify_ratio": 0.25,
+    "verified_slices": [
+      1,
+      8
+    ],
+    "num_slices": 8,
+    "malicious_detected": [
+      8
+    ],
+    "experiment": "P1_8s_vr0.25_fault"
+  },
+  {
+    "e2e_latency_ms": 8706.45,
+    "total_proof_gen_ms": 8208.58,
+    "total_verify_ms": 301.08,
+    "peak_rss_mb": 261.32,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "tamper",
+    "verify_ratio": 1.0,
+    "verified_slices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P3_4s_tamper_vr1.00"
+  },
+  {
+    "e2e_latency_ms": 4504.78,
+    "total_proof_gen_ms": 4253.99,
+    "total_verify_ms": 66.22,
+    "peak_rss_mb": 261.79,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "tamper",
+    "verify_ratio": 0.5,
+    "verified_slices": [
+      1,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P3_4s_tamper_vr0.50"
+  },
+  {
+    "e2e_latency_ms": 8076.72,
+    "total_proof_gen_ms": 7742.54,
+    "total_verify_ms": 149.8,
+    "peak_rss_mb": 262.41,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "skip",
+    "verify_ratio": 1.0,
+    "verified_slices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P3_4s_skip_vr1.00"
+  },
+  {
+    "e2e_latency_ms": 3779.49,
+    "total_proof_gen_ms": 3553.39,
+    "total_verify_ms": 84.57,
+    "peak_rss_mb": 262.44,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "skip",
+    "verify_ratio": 0.5,
+    "verified_slices": [
+      1,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P3_4s_skip_vr0.50"
+  },
+  {
+    "e2e_latency_ms": 6781.13,
+    "total_proof_gen_ms": 6373.45,
+    "total_verify_ms": 149.3,
+    "peak_rss_mb": 264.43,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "random",
+    "verify_ratio": 1.0,
+    "verified_slices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P3_4s_random_vr1.00"
+  },
+  {
+    "e2e_latency_ms": 3093.81,
+    "total_proof_gen_ms": 2938.23,
+    "total_verify_ms": 74.06,
+    "peak_rss_mb": 265.34,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "random",
+    "verify_ratio": 0.5,
+    "verified_slices": [
+      1,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P3_4s_random_vr0.50"
+  },
+  {
+    "e2e_latency_ms": 5968.39,
+    "total_proof_gen_ms": 5748.43,
+    "total_verify_ms": 140.78,
+    "peak_rss_mb": 270.21,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "replay",
+    "verify_ratio": 1.0,
+    "verified_slices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P3_4s_replay_vr1.00"
+  },
+  {
+    "e2e_latency_ms": 3170.47,
+    "total_proof_gen_ms": 3055.7,
+    "total_verify_ms": 62.04,
+    "peak_rss_mb": 270.21,
+    "hash_chain_ok": false,
+    "detection_accuracy": 1.0,
+    "fault_at": 4,
+    "fault_type": "replay",
+    "verify_ratio": 0.5,
+    "verified_slices": [
+      1,
+      4
+    ],
+    "num_slices": 4,
+    "malicious_detected": [
+      4
+    ],
+    "experiment": "P3_4s_replay_vr0.50"
+  }
+]

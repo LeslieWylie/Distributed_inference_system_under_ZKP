@@ -1,0 +1,341 @@
+[
+  {
+    "visibility_mode": "all_public",
+    "num_slices": 4,
+    "num_trials": 3,
+    "avg_e2e_latency_ms": 5916.75,
+    "avg_total_proof_gen_ms": 5574.66,
+    "avg_total_verify_ms": 206.97,
+    "avg_peak_rss_mb": 261.77,
+    "trials": [
+      {
+        "e2e_latency_ms": 6428.31,
+        "total_proof_gen_ms": 6038.91,
+        "total_verify_ms": 281.04,
+        "avg_proof_gen_ms": 1509.73,
+        "avg_verify_ms": 70.26,
+        "peak_rss_mb": 260.31,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 1586.23,
+            "verify_ms": 76.69,
+            "peak_rss_mb": 260.31
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 1442.64,
+            "verify_ms": 78.9,
+            "peak_rss_mb": 260.14
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 1398.07,
+            "verify_ms": 71.32,
+            "peak_rss_mb": 259.98
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 1611.97,
+            "verify_ms": 54.13,
+            "peak_rss_mb": 259.43
+          }
+        ]
+      },
+      {
+        "e2e_latency_ms": 5950.11,
+        "total_proof_gen_ms": 5630.11,
+        "total_verify_ms": 193.42,
+        "avg_proof_gen_ms": 1407.53,
+        "avg_verify_ms": 48.36,
+        "peak_rss_mb": 262.31,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 1707.28,
+            "verify_ms": 37.83,
+            "peak_rss_mb": 260.68
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 1378.0,
+            "verify_ms": 39.88,
+            "peak_rss_mb": 262.31
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 1251.47,
+            "verify_ms": 32.49,
+            "peak_rss_mb": 261.02
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 1293.36,
+            "verify_ms": 83.22,
+            "peak_rss_mb": 260.61
+          }
+        ]
+      },
+      {
+        "e2e_latency_ms": 5371.82,
+        "total_proof_gen_ms": 5054.96,
+        "total_verify_ms": 146.45,
+        "avg_proof_gen_ms": 1263.74,
+        "avg_verify_ms": 36.61,
+        "peak_rss_mb": 262.7,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 1177.41,
+            "verify_ms": 47.24,
+            "peak_rss_mb": 261.77
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 1308.86,
+            "verify_ms": 30.98,
+            "peak_rss_mb": 262.33
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 1311.78,
+            "verify_ms": 40.0,
+            "peak_rss_mb": 261.47
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 1256.91,
+            "verify_ms": 28.23,
+            "peak_rss_mb": 262.7
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "visibility_mode": "hashed",
+    "num_slices": 4,
+    "num_trials": 3,
+    "avg_e2e_latency_ms": 10965.36,
+    "avg_total_proof_gen_ms": 10578.97,
+    "avg_total_verify_ms": 197.26,
+    "avg_peak_rss_mb": 256.34,
+    "trials": [
+      {
+        "e2e_latency_ms": 11048.11,
+        "total_proof_gen_ms": 10555.07,
+        "total_verify_ms": 299.33,
+        "avg_proof_gen_ms": 2638.77,
+        "avg_verify_ms": 74.83,
+        "peak_rss_mb": 254.71,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 2474.18,
+            "verify_ms": 72.06,
+            "peak_rss_mb": 253.98
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 2404.85,
+            "verify_ms": 86.66,
+            "peak_rss_mb": 254.71
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 2719.6,
+            "verify_ms": 75.28,
+            "peak_rss_mb": 253.6
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 2956.44,
+            "verify_ms": 65.33,
+            "peak_rss_mb": 253.18
+          }
+        ]
+      },
+      {
+        "e2e_latency_ms": 11431.93,
+        "total_proof_gen_ms": 11087.97,
+        "total_verify_ms": 159.24,
+        "avg_proof_gen_ms": 2771.99,
+        "avg_verify_ms": 39.81,
+        "peak_rss_mb": 255.83,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 2774.05,
+            "verify_ms": 57.72,
+            "peak_rss_mb": 254.68
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 2883.57,
+            "verify_ms": 32.68,
+            "peak_rss_mb": 254.94
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 2776.79,
+            "verify_ms": 36.99,
+            "peak_rss_mb": 253.97
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 2653.56,
+            "verify_ms": 31.85,
+            "peak_rss_mb": 255.83
+          }
+        ]
+      },
+      {
+        "e2e_latency_ms": 10416.04,
+        "total_proof_gen_ms": 10093.88,
+        "total_verify_ms": 133.2,
+        "avg_proof_gen_ms": 2523.47,
+        "avg_verify_ms": 33.3,
+        "peak_rss_mb": 258.48,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 2835.36,
+            "verify_ms": 31.09,
+            "peak_rss_mb": 255.32
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 2384.37,
+            "verify_ms": 36.06,
+            "peak_rss_mb": 256.82
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 2499.3,
+            "verify_ms": 36.48,
+            "peak_rss_mb": 255.43
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 2374.85,
+            "verify_ms": 29.57,
+            "peak_rss_mb": 258.48
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "visibility_mode": "private",
+    "num_slices": 4,
+    "num_trials": 3,
+    "avg_e2e_latency_ms": 5593.75,
+    "avg_total_proof_gen_ms": 5294.17,
+    "avg_total_verify_ms": 179.42,
+    "avg_peak_rss_mb": 262.57,
+    "trials": [
+      {
+        "e2e_latency_ms": 5857.38,
+        "total_proof_gen_ms": 5476.03,
+        "total_verify_ms": 250.66,
+        "avg_proof_gen_ms": 1369.01,
+        "avg_verify_ms": 62.66,
+        "peak_rss_mb": 261.83,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 1366.12,
+            "verify_ms": 69.49,
+            "peak_rss_mb": 261.83
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 1411.64,
+            "verify_ms": 64.54,
+            "peak_rss_mb": 260.82
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 1370.53,
+            "verify_ms": 81.89,
+            "peak_rss_mb": 259.24
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 1327.74,
+            "verify_ms": 34.74,
+            "peak_rss_mb": 260.76
+          }
+        ]
+      },
+      {
+        "e2e_latency_ms": 5387.71,
+        "total_proof_gen_ms": 5107.41,
+        "total_verify_ms": 173.77,
+        "avg_proof_gen_ms": 1276.85,
+        "avg_verify_ms": 43.44,
+        "peak_rss_mb": 262.92,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 1306.55,
+            "verify_ms": 34.34,
+            "peak_rss_mb": 262.12
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 1264.36,
+            "verify_ms": 70.49,
+            "peak_rss_mb": 261.02
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 1291.59,
+            "verify_ms": 37.87,
+            "peak_rss_mb": 260.51
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 1244.91,
+            "verify_ms": 31.07,
+            "peak_rss_mb": 262.92
+          }
+        ]
+      },
+      {
+        "e2e_latency_ms": 5536.17,
+        "total_proof_gen_ms": 5299.08,
+        "total_verify_ms": 113.83,
+        "avg_proof_gen_ms": 1324.77,
+        "avg_verify_ms": 28.46,
+        "peak_rss_mb": 262.96,
+        "slices": [
+          {
+            "slice_id": 1,
+            "proof_gen_ms": 1280.81,
+            "verify_ms": 30.06,
+            "peak_rss_mb": 262.59
+          },
+          {
+            "slice_id": 2,
+            "proof_gen_ms": 1385.27,
+            "verify_ms": 26.95,
+            "peak_rss_mb": 261.14
+          },
+          {
+            "slice_id": 3,
+            "proof_gen_ms": 1353.32,
+            "verify_ms": 26.25,
+            "peak_rss_mb": 262.32
+          },
+          {
+            "slice_id": 4,
+            "proof_gen_ms": 1279.68,
+            "verify_ms": 30.57,
+            "peak_rss_mb": 262.96
+          }
+        ]
+      }
+    ]
+  }
+]
