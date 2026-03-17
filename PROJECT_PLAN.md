@@ -407,9 +407,11 @@ $$P_{detect}^{collusion} = 1 - P_{escape}$$
 
 **本系统不能保证的**：
 - 相邻 Worker 合谋 → 需要冗余执行或 TEE
-- Master 恶意 → 需要去中心化验证或链上验证
+- Master 恶意（Master 执行所有验证逻辑，若被攻破则全部防线失效）→ 需要去中心化 verifier、链上验证合约或独立第三方审计节点
 - 数据隐私（Worker 看到明文输入）→ 需要 MPC/HE
 - proof 数量 O(N) → 需要递归 SNARK（EZKL v23 不支持）
+- light 节点的 L1 哈希校验可被恶意 Worker 同时伪造 output+hash 绕过 → 防线是随机挑战 re_prove（概率性威慑）
+- 跨节点传输中间数据的原像承诺（数据离开 proof 保护后可被中途篡改）→ 需要 EZKL polycommit/swap_proof_commitments 级别的 proof composition
 
 ---
 

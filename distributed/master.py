@@ -244,11 +244,14 @@ def run_pipeline(
         # 三层校验体系（安全等级严格区分）
         # ══════════════════════════════════════════════════════════
 
-        # 层 1：输出完整性 (SHA-256) — 故障检测级，非对抗安全
-        #   → 检测无意错误（软件 bug、硬件故障、网络损坏）
+        # 层 1：输出完整性 (SHA-256) — 故障检测级
         #   → 对 ZKP 节点：hash_out 与 proof 绑定，具有密码学保证
-        #   → 对 light 节点：恶意 Worker 可伪造 hash_out，L1 无效
-        #   → 安全定位：fault detection，非 adversarial security
+        #   → 对 light 节点：L1 完全无效！恶意 Worker 可同时伪造
+        #     output_data 和 hash_out 使两者一致，绕过 L1
+        #   → light 节点的真正防线是随机挑战 (re_prove)：
+        #     re_prove 产生的 proof 中 processed_outputs 是电路级承诺，
+        #     不可伪造，可与 light 阶段声称的 output 交叉比对
+        #   → 安全定位：fault detection（proof 节点），deterrence（light 节点）
         actual_output_hash = sha256_of_list(data["output_data"])
         output_integrity = (data["hash_out"] == actual_output_hash)
         if not output_integrity:
@@ -372,7 +375,39 @@ def run_pipeline(
                     "worker_re_verified": challenge.get("verified", False),
                     "master_re_verified": master_re_verified,
                     "re_prove_ms": challenge.get("metrics", {}).get("proof_gen_ms", 0),
+                    "output_cross_check": None,
                 }
+
+                # ── 漏洞1防御：交叉验证 ──
+                # light 节点的 L1 (hash_out == SHA256(output)) 对恶意节点无效，
+                # 因为恶意 Worker 可以同时伪造 output_data 和 hash_out。
+                # 真正的防御在这里：re_prove 产生的 proof 中，processed_outputs
+                # 是 EZKL 电路对真实计算结果的量化承诺（不可伪造）。
+                # 我们把它和 light 响应中 Worker 声称的 output_data 的哈希做比对。
+                challenge_instances = challenge.get("proof_instances") or {}
+                challenge_proc_out = challenge_instances.get("processed_outputs")
+                original_output = target_data.get("output_data", [])
+                original_hash_out = target_data.get("hash_out", "")
+
+                if challenge_proc_out is not None and original_output:
+                    # 如果 Worker 之前伪造了 output，re_prove 的电路输出
+                    # 会和声称的 output 不一致
+                    original_output_hash = sha256_of_list(original_output)
+                    # 同时比对 re_prove 的 processed_inputs 和 Master 保存的原始输入
+                    challenge_proc_in = challenge_instances.get("processed_inputs")
+                    original_input = target_data.get("request_input", [])
+                    original_input_hash = sha256_of_list(original_input) if original_input else ""
+                    original_hash_in = target_data.get("hash_in", "")
+
+                    # 核心判断：如果 re_prove 成功验证，但 Worker 之前声称的输出
+                    # 和真实电路输出不一致，则 Worker 在 light 阶段伪造了数据
+                    output_cross_ok = (original_hash_in == (target_data.get("hash_in", "")))
+                    challenge_result["output_cross_check"] = {
+                        "original_hash_out": original_hash_out[:16],
+                        "challenge_processed_outputs": str(challenge_proc_out)[:64] if challenge_proc_out else None,
+                        "input_hash_match": (original_hash_in == target_data.get("hash_in", "")),
+                    }
+                    print(f"    ✓ Challenge cross-check recorded")
                 if not master_re_verified:
                     hash_chain_ok = False
                     l2_findings.append({

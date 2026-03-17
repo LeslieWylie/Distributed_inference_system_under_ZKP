@@ -375,7 +375,9 @@ Start-Sleep -Seconds 30
 
 | 限制 | 缓解 |
 |---|---|
-| Master 中心化 | 去中心化 verifier / 链上 |
+| Master 中心化（Master 执行所有验证，被攻破则全部失效） | 去中心化 verifier / 链上合约 / 独立审计节点 |
+| light 节点 L1 可被同时伪造 output+hash 绕过 | 随机挑战 re_prove（概率性威慑） |
+| 跨节点中间数据缺少原像承诺 | polycommit/swap_proof_commitments |
 | light 节点可被合谋 | 边覆盖 + 随机挑战 |
 | proof 数 O(N) | Nova/SuperNova IVC |
 | 无数据隐私 | MPC/HE（超出范畴） |
