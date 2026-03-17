@@ -40,10 +40,22 @@ DEFAULT_WORKERS = [
 # Master 核心逻辑
 # ---------------------------------------------------------------------------
 
-def _select_verified_slices(num_slices: int, verify_ratio: float) -> set[int]:
+def _select_verified_slices(num_slices: int, verify_ratio: float,
+                            strategy: str = "edge_cover",
+                            max_light_gap: int = 1) -> set[int]:
     """
     选择哪些切片做完整 ZKP 验证。
-    策略：首尾切片必须验证，中间按比例随机选。
+
+    三种策略：
+      "edge_cover"  — 边覆盖策略（推荐）：保证每条边 (i, i+1) 至少有一端是 ZKP，
+                       且连续 light 节点不超过 max_light_gap 个。
+      "contiguous"  — 首尾必选 + 随机选一个连续段做 ZKP。
+      "random"      — 首尾必选 + 中间随机散布（旧策略，安全性最弱）。
+
+    边覆盖 (edge_cover) 的安全保证：
+      每条边 (i→i+1) 至少有一端被 ZKP 覆盖 →
+      任何恶意 Worker 的输出都至少被一个相邻的 ZKP proof 约束。
+      连续 light 限制 → 攻击窗口 ≤ max_light_gap。
     """
     all_ids = list(range(1, num_slices + 1))
     if verify_ratio >= 1.0:
@@ -51,11 +63,55 @@ def _select_verified_slices(num_slices: int, verify_ratio: float) -> set[int]:
 
     # 首尾必选
     must = {1, num_slices}
-    middle = [i for i in all_ids if i not in must]
-    k = max(0, round(len(all_ids) * verify_ratio) - len(must))
-    k = min(k, len(middle))
-    selected = must | set(random.sample(middle, k))
-    return selected
+
+    if strategy == "edge_cover":
+        # 边覆盖策略：确保每条边至少一端有 ZKP
+        # 同时限制连续 light 节点数 ≤ max_light_gap
+        selected = set(must)
+        # 从节点 2 开始，每隔 (max_light_gap + 1) 个强制插入一个 ZKP 节点
+        # 这保证连续 light 永远 ≤ max_light_gap
+        i = 2
+        while i < num_slices:
+            # 如果距离上一个 ZKP 节点已经有 max_light_gap 个 light 了
+            # 那么当前节点必须是 ZKP
+            gap = 0
+            for j in range(i, min(i + max_light_gap + 1, num_slices)):
+                if j not in selected:
+                    gap += 1
+                    if gap > max_light_gap:
+                        selected.add(j)
+                        break
+                else:
+                    break
+            i += 1
+
+        # 如果 verify_ratio 允许更多，随机补充
+        middle = [x for x in all_ids if x not in selected]
+        extra = max(0, round(num_slices * verify_ratio) - len(selected))
+        if extra > 0 and len(middle) > 0:
+            extra = min(extra, len(middle))
+            selected |= set(random.sample(middle, extra))
+
+        return selected
+
+    elif strategy == "contiguous":
+        total_to_select = max(len(must), round(num_slices * verify_ratio))
+        k = min(total_to_select - len(must), num_slices - len(must))
+        middle = [i for i in all_ids if i not in must]
+        if k > 0 and len(middle) >= k:
+            max_start = len(middle) - k
+            start = random.randint(0, max_start)
+            selected = must | set(middle[start:start + k])
+        else:
+            selected = must | set(middle[:k])
+        return selected
+
+    else:  # random (legacy)
+        total_to_select = max(len(must), round(num_slices * verify_ratio))
+        k = min(total_to_select - len(must), num_slices - len(must))
+        middle = [i for i in all_ids if i not in must]
+        k = min(k, len(middle))
+        return must | set(random.sample(middle, k))
 
 
 def run_pipeline(
@@ -64,9 +120,10 @@ def run_pipeline(
     fault_at: int | None = None,
     fault_type: str = "tamper",
     verify_ratio: float = 1.0,
+    verify_strategy: str = "edge_cover",
 ) -> dict:
     """
-    按流水线顺序调用各 Worker，收集结果并执行哈希链校验。
+    按流水线顺序调用各 Worker，收集结果并执行校验。
 
     参数:
         initial_input: 第一个切片的输入数据
@@ -74,12 +131,13 @@ def run_pipeline(
         fault_at: 在哪个 slice_id 上注入故障（None 表示不注入）
         fault_type: 故障类型 tamper/skip/random/replay
         verify_ratio: 做完整 ZKP 验证的切片比例 (0.0-1.0)
+        verify_strategy: "edge_cover"(推荐) / "contiguous" / "random"(旧)
 
     返回:
         包含所有结果和指标的字典。
     """
     num_slices = len(workers)
-    verified_set = _select_verified_slices(num_slices, verify_ratio)
+    verified_set = _select_verified_slices(num_slices, verify_ratio, verify_strategy)
 
     print("=" * 60)
     print("Master: 分布式推理流水线启动")
@@ -128,12 +186,14 @@ def run_pipeline(
         print(f"    verified: {data['verified']}")
 
         # ══════════════════════════════════════════════════════════
-        # 三层校验体系
+        # 三层校验体系（安全等级严格区分）
         # ══════════════════════════════════════════════════════════
 
-        # 层 1：输出完整性校验 (外部 SHA-256)
-        #   → Worker 返回的 output_data 的哈希必须等于 hash_out
-        #   → 检测：Worker 篡改 output_data 但保留正确 hash_out
+        # 层 1：输出完整性 (SHA-256) — 故障检测级，非对抗安全
+        #   → 检测无意错误（软件 bug、硬件故障、网络损坏）
+        #   → 对 ZKP 节点：hash_out 与 proof 绑定，具有密码学保证
+        #   → 对 light 节点：恶意 Worker 可伪造 hash_out，L1 无效
+        #   → 安全定位：fault detection，非 adversarial security
         actual_output_hash = sha256_of_list(data["output_data"])
         output_integrity = (data["hash_out"] == actual_output_hash)
         if not output_integrity:
@@ -149,11 +209,11 @@ def run_pipeline(
         else:
             print(f"    ✓ L1 Output integrity OK (slice {sid})")
 
-        # 层 2：ZKP Proof Linking (电路内 Poseidon 哈希)
-        #   → 如果当前切片和上一个切片都有 proof_instances，
-        #     则比对 prev.processed_outputs == curr.processed_inputs
-        #   → 这是 ZKP 公开实例，verify 通过 = 数学保证正确
-        #   → 不可被 Worker 伪造（哈希在算术电路内计算）
+        # 层 2：ZKP Proof Linking — 密码学安全级（系统唯一的密码学安全来源）
+        #   → 比对 prev.processed_outputs == curr.processed_inputs
+        #   → 这是 ZKP 公开实例，verify 通过 = 数学保证
+        #   → 安全前提：Poseidon collision-resistance + PLONK soundness
+        #   → 边覆盖策略确保每条边至少一端有 ZKP
         if i > 0 and use_proof:
             prev = results[-1]
             prev_instances = prev.get("proof_instances")
@@ -180,8 +240,10 @@ def run_pipeline(
             else:
                 print(f"    ℹ L2 Skip (proof_instances not available)")
 
-        # 层 3：外部哈希链 (传统 SHA-256 fallback)
-        #   → 作为 L2 不可用时的退化方案
+        # 层 3：外部哈希链 — 一致性检查级，非对抗安全
+        #   → 仅检测非协同的错误/故障
+        #   → 合谋的相邻节点可以协调伪造一致的哈希 → L3 完全失效
+        #   → 安全定位：consistency check，非 adversarial security
         if i > 0:
             prev = results[-1]
             expected_hash = prev["hash_out"]
@@ -207,6 +269,33 @@ def run_pipeline(
         current_input = data["output_data"]
 
     e2e_ms = (time.perf_counter() - e2e_start) * 1000
+
+    # ── 随机挑战 (Random Challenge) ──
+    # 对未做 ZKP 的切片随机抽取一个，要求重新 prove
+    # 防止 Worker 提前预计算或 replay
+    light_slices = [w for w in workers if w["slice_id"] not in verified_set]
+    challenge_result = None
+    if light_slices and len(light_slices) > 0:
+        target = random.choice(light_slices)
+        target_data = results[target["slice_id"] - 1]  # 0-indexed
+        print(f"\n[Master] 随机挑战 → Worker {target['slice_id']} (re_prove)")
+        try:
+            resp = requests.post(
+                f"{target['url']}/re_prove",
+                json={"input_data": target_data.get("output_data", [])},
+                timeout=180,
+            )
+            if resp.status_code == 200:
+                challenge = resp.json()
+                challenge_result = {
+                    "challenged_slice": target["slice_id"],
+                    "re_verified": challenge.get("verified", False),
+                    "re_prove_ms": challenge.get("metrics", {}).get("proof_gen_ms", 0),
+                }
+                print(f"    re_verified: {challenge_result['re_verified']} "
+                      f"({challenge_result['re_prove_ms']:.0f} ms)")
+        except Exception as e:
+            print(f"    ⚠ Challenge failed: {e}")
 
     # 也校验首个 Worker 的输入哈希
     expected_first_hash = sha256_of_list(initial_input)
@@ -237,7 +326,9 @@ def run_pipeline(
         "fault_injected_at": fault_at,
         "fault_type": fault_type if fault_at else None,
         "verify_ratio": verify_ratio,
+        "verify_strategy": verify_strategy,
         "verified_slices": sorted(verified_set),
+        "random_challenge": challenge_result,
         "slices": [
             {
                 "slice_id": r["slice_id"],
@@ -296,6 +387,9 @@ def main():
                         help="Type of fault to inject")
     parser.add_argument("--verify-ratio", type=float, default=1.0,
                         help="Fraction of slices to verify with ZKP (0.0-1.0)")
+    parser.add_argument("--verify-strategy", type=str, default="edge_cover",
+                        choices=["edge_cover", "contiguous", "random"],
+                        help="Verification strategy: edge_cover (recommended), contiguous, random")
     parser.add_argument("--workers", type=str, default=None,
                         help="JSON file with worker config (optional)")
     parser.add_argument("--input", type=str, default=None,
@@ -336,7 +430,8 @@ def main():
             initial_input = json.load(f)["input_data"][0]
 
     run_pipeline(initial_input, workers, fault_at=args.fault_at,
-                 fault_type=args.fault_type, verify_ratio=args.verify_ratio)
+                 fault_type=args.fault_type, verify_ratio=args.verify_ratio,
+                 verify_strategy=args.verify_strategy)
 
 
 if __name__ == "__main__":

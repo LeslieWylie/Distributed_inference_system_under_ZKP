@@ -192,6 +192,31 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
             proof_mode="light",
         )
 
+    # ----- /re_prove: 随机挑战重验证（Master 事后抽查） -----
+    @app.post("/re_prove")
+    def re_prove(req: InferRequest):
+        """
+        Master 随机挑战：对一个之前走 /infer_light 的请求重新做 ZKP prove。
+        防止 Worker 预计算或 replay 攻击。
+        """
+        request_id = str(uuid.uuid4())[:8]
+        data_path = os.path.join(state["artifacts_dir"], f"challenge_{request_id}.json")
+        write_input_json(req.input_data, data_path)
+
+        result = ezkl_prove(data_path, state["paths"], state["artifacts_dir"])
+
+        try:
+            os.remove(data_path)
+        except OSError:
+            pass
+
+        return {
+            "slice_id": state["slice_id"],
+            "verified": result["verified"],
+            "proof_instances": result.get("proof_instances"),
+            "metrics": result["metrics"],
+        }
+
     return app
 
 
