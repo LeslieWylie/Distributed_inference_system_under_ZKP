@@ -24,9 +24,9 @@
   },
   "zk_chain_comparison": [
     {
-      "e2e_latency_ms": 5770.72,
-      "total_proof_gen_ms": 5339.8,
-      "total_verify_ms": 314.74,
+      "e2e_latency_ms": 7129.56,
+      "total_proof_gen_ms": 6525.58,
+      "total_verify_ms": 372.23,
       "all_external_ok": true,
       "all_circuit_ok": true,
       "all_chain_ok": true,
@@ -39,47 +39,45 @@
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1378.42,
-          "verify_ms": 83.44
+          "proof_gen_ms": 1671.86,
+          "verify_ms": 98.85
         },
         {
           "slice_id": 2,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1351.01,
-          "verify_ms": 92.74
+          "proof_gen_ms": 1589.53,
+          "verify_ms": 88.94
         },
         {
           "slice_id": 3,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1313.31,
-          "verify_ms": 65.07
+          "proof_gen_ms": 1564.72,
+          "verify_ms": 103.02
         },
         {
           "slice_id": 4,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1297.06,
-          "verify_ms": 73.49
+          "proof_gen_ms": 1699.47,
+          "verify_ms": 81.42
         }
       ],
       "scheme": "external_sha256",
       "visibility_mode": "all_public"
     },
     {
-      "e2e_latency_ms": 5793.98,
-      "total_proof_gen_ms": 5445.28,
-      "total_verify_ms": 245.89,
-      "all_external_ok": false,
+      "e2e_latency_ms": 7105.38,
+      "total_proof_gen_ms": 6611.93,
+      "total_verify_ms": 230.43,
+      "all_external_ok": true,
       "all_circuit_ok": true,
       "all_chain_ok": true,
-      "malicious_detected": [
-        4
-      ],
+      "malicious_detected": [],
       "fault_at": 4,
       "fault_type": "tamper",
       "checks": [
@@ -88,41 +86,41 @@
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1498.7,
-          "verify_ms": 52.34
+          "proof_gen_ms": 1686.75,
+          "verify_ms": 68.02
         },
         {
           "slice_id": 2,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1395.55,
-          "verify_ms": 81.79
+          "proof_gen_ms": 1607.18,
+          "verify_ms": 52.32
         },
         {
           "slice_id": 3,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1248.96,
-          "verify_ms": 50.59
+          "proof_gen_ms": 1679.04,
+          "verify_ms": 65.92
         },
         {
           "slice_id": 4,
-          "external_integrity": false,
+          "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1302.07,
-          "verify_ms": 61.17
+          "proof_gen_ms": 1638.96,
+          "verify_ms": 44.17
         }
       ],
       "scheme": "external_sha256",
       "visibility_mode": "all_public"
     },
     {
-      "e2e_latency_ms": 13243.29,
-      "total_proof_gen_ms": 12612.1,
-      "total_verify_ms": 386.83,
+      "e2e_latency_ms": 11986.6,
+      "total_proof_gen_ms": 11138.02,
+      "total_verify_ms": 464.29,
       "all_external_ok": true,
       "all_circuit_ok": true,
       "all_chain_ok": true,
@@ -135,47 +133,45 @@
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 2915.8,
-          "verify_ms": 90.01
+          "proof_gen_ms": 2813.17,
+          "verify_ms": 85.99
         },
         {
           "slice_id": 2,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 3343.07,
-          "verify_ms": 137.3
+          "proof_gen_ms": 2763.4,
+          "verify_ms": 139.72
         },
         {
           "slice_id": 3,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 3347.85,
-          "verify_ms": 76.14
+          "proof_gen_ms": 2761.39,
+          "verify_ms": 90.06
         },
         {
           "slice_id": 4,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 3005.38,
-          "verify_ms": 83.38
+          "proof_gen_ms": 2800.06,
+          "verify_ms": 148.52
         }
       ],
       "scheme": "in_circuit_poseidon",
       "visibility_mode": "hashed"
     },
     {
-      "e2e_latency_ms": 11677.84,
-      "total_proof_gen_ms": 11247.17,
-      "total_verify_ms": 268.8,
-      "all_external_ok": false,
+      "e2e_latency_ms": 12419.06,
+      "total_proof_gen_ms": 11654.0,
+      "total_verify_ms": 382.87,
+      "all_external_ok": true,
       "all_circuit_ok": true,
       "all_chain_ok": true,
-      "malicious_detected": [
-        4
-      ],
+      "malicious_detected": [],
       "fault_at": 4,
       "fault_type": "tamper",
       "checks": [
@@ -184,41 +180,41 @@
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 3265.94,
-          "verify_ms": 56.51
+          "proof_gen_ms": 3008.42,
+          "verify_ms": 107.7
         },
         {
           "slice_id": 2,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 2737.52,
-          "verify_ms": 69.09
+          "proof_gen_ms": 2948.06,
+          "verify_ms": 109.39
         },
         {
           "slice_id": 3,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 2682.79,
-          "verify_ms": 57.14
+          "proof_gen_ms": 2908.12,
+          "verify_ms": 84.35
         },
         {
           "slice_id": 4,
-          "external_integrity": false,
+          "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 2560.92,
-          "verify_ms": 86.06
+          "proof_gen_ms": 2789.4,
+          "verify_ms": 81.43
         }
       ],
       "scheme": "in_circuit_poseidon",
       "visibility_mode": "hashed"
     },
     {
-      "e2e_latency_ms": 5369.29,
-      "total_proof_gen_ms": 4892.02,
-      "total_verify_ms": 298.97,
+      "e2e_latency_ms": 7385.29,
+      "total_proof_gen_ms": 6723.18,
+      "total_verify_ms": 407.96,
       "all_external_ok": true,
       "all_circuit_ok": true,
       "all_chain_ok": true,
@@ -231,47 +227,45 @@
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1257.86,
-          "verify_ms": 76.25
+          "proof_gen_ms": 1630.73,
+          "verify_ms": 102.72
         },
         {
           "slice_id": 2,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1253.76,
-          "verify_ms": 83.19
+          "proof_gen_ms": 1524.04,
+          "verify_ms": 96.48
         },
         {
           "slice_id": 3,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1187.08,
-          "verify_ms": 69.18
+          "proof_gen_ms": 1800.03,
+          "verify_ms": 108.38
         },
         {
           "slice_id": 4,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1193.32,
-          "verify_ms": 70.35
+          "proof_gen_ms": 1768.38,
+          "verify_ms": 100.38
         }
       ],
       "scheme": "private_input",
       "visibility_mode": "private"
     },
     {
-      "e2e_latency_ms": 5357.46,
-      "total_proof_gen_ms": 5029.06,
-      "total_verify_ms": 191.76,
-      "all_external_ok": false,
+      "e2e_latency_ms": 7722.01,
+      "total_proof_gen_ms": 7051.93,
+      "total_verify_ms": 287.75,
+      "all_external_ok": true,
       "all_circuit_ok": true,
       "all_chain_ok": true,
-      "malicious_detected": [
-        4
-      ],
+      "malicious_detected": [],
       "fault_at": 4,
       "fault_type": "tamper",
       "checks": [
@@ -280,32 +274,32 @@
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1237.55,
-          "verify_ms": 53.94
+          "proof_gen_ms": 1869.53,
+          "verify_ms": 100.49
         },
         {
           "slice_id": 2,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1198.94,
-          "verify_ms": 53.3
+          "proof_gen_ms": 1704.83,
+          "verify_ms": 73.04
         },
         {
           "slice_id": 3,
           "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1320.52,
-          "verify_ms": 39.59
+          "proof_gen_ms": 1782.66,
+          "verify_ms": 44.83
         },
         {
           "slice_id": 4,
-          "external_integrity": false,
+          "external_integrity": true,
           "circuit_verified": true,
           "chain_ok": true,
-          "proof_gen_ms": 1272.05,
-          "verify_ms": 44.93
+          "proof_gen_ms": 1694.91,
+          "verify_ms": 69.39
         }
       ],
       "scheme": "private_input",
