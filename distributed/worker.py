@@ -251,6 +251,7 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict,
         return {
             "slice_id": state["slice_id"],
             "verified": result["verified"],
+            "proof": result["proof"],
             "proof_instances": result.get("proof_instances"),
             "proof_artifacts": result.get("artifact_paths"),
             "metrics": result["metrics"],
