@@ -1,14 +1,15 @@
 [
   {
-    "e2e_latency_ms": 5600.76,
-    "total_proof_gen_ms": 5146.38,
-    "total_verify_ms": 207.82,
-    "peak_rss_mb": 261.22,
+    "e2e_latency_ms": 5558.77,
+    "total_proof_gen_ms": 5004.34,
+    "total_verify_ms": 300.24,
+    "peak_rss_mb": 260.74,
     "hash_chain_ok": true,
     "detection_accuracy": 1.0,
     "fault_at": null,
     "fault_type": null,
     "verify_ratio": 1.0,
+    "actual_proof_fraction": 1.0,
     "verified_slices": [
       1,
       2,
@@ -17,18 +18,20 @@
     ],
     "num_slices": 4,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_4s_vr1.00_normal"
   },
   {
-    "e2e_latency_ms": 6553.04,
-    "total_proof_gen_ms": 6194.1,
-    "total_verify_ms": 178.31,
-    "peak_rss_mb": 263.38,
+    "e2e_latency_ms": 5291.48,
+    "total_proof_gen_ms": 4893.52,
+    "total_verify_ms": 228.04,
+    "peak_rss_mb": 261.96,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "tamper",
     "verify_ratio": 1.0,
+    "actual_proof_fraction": 1.0,
     "verified_slices": [
       1,
       2,
@@ -39,94 +42,108 @@
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_4s_vr1.00_fault"
   },
   {
-    "e2e_latency_ms": 3477.06,
-    "total_proof_gen_ms": 3311.62,
-    "total_verify_ms": 84.21,
-    "peak_rss_mb": 263.42,
+    "e2e_latency_ms": 3945.76,
+    "total_proof_gen_ms": 3635.31,
+    "total_verify_ms": 181.0,
+    "peak_rss_mb": 262.71,
     "hash_chain_ok": true,
     "detection_accuracy": 1.0,
     "fault_at": null,
     "fault_type": null,
     "verify_ratio": 0.5,
+    "actual_proof_fraction": 0.75,
     "verified_slices": [
       1,
+      3,
       4
     ],
     "num_slices": 4,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_4s_vr0.50_normal"
   },
   {
-    "e2e_latency_ms": 3718.21,
-    "total_proof_gen_ms": 3576.95,
-    "total_verify_ms": 89.26,
-    "peak_rss_mb": 263.45,
+    "e2e_latency_ms": 4048.19,
+    "total_proof_gen_ms": 3691.7,
+    "total_verify_ms": 205.94,
+    "peak_rss_mb": 263.61,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "tamper",
     "verify_ratio": 0.5,
+    "actual_proof_fraction": 0.75,
     "verified_slices": [
       1,
+      3,
       4
     ],
     "num_slices": 4,
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_4s_vr0.50_fault"
   },
   {
-    "e2e_latency_ms": 4334.23,
-    "total_proof_gen_ms": 4132.28,
-    "total_verify_ms": 111.59,
-    "peak_rss_mb": 263.59,
+    "e2e_latency_ms": 3999.89,
+    "total_proof_gen_ms": 3669.67,
+    "total_verify_ms": 172.77,
+    "peak_rss_mb": 265.39,
     "hash_chain_ok": true,
     "detection_accuracy": 1.0,
     "fault_at": null,
     "fault_type": null,
     "verify_ratio": 0.25,
+    "actual_proof_fraction": 0.75,
     "verified_slices": [
       1,
+      3,
       4
     ],
     "num_slices": 4,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_4s_vr0.25_normal"
   },
   {
-    "e2e_latency_ms": 4015.71,
-    "total_proof_gen_ms": 3825.31,
-    "total_verify_ms": 70.99,
-    "peak_rss_mb": 269.52,
+    "e2e_latency_ms": 4599.1,
+    "total_proof_gen_ms": 4284.55,
+    "total_verify_ms": 147.84,
+    "peak_rss_mb": 270.04,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "tamper",
     "verify_ratio": 0.25,
+    "actual_proof_fraction": 0.75,
     "verified_slices": [
       1,
+      3,
       4
     ],
     "num_slices": 4,
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_4s_vr0.25_fault"
   },
   {
-    "e2e_latency_ms": 12139.24,
-    "total_proof_gen_ms": 11447.86,
-    "total_verify_ms": 461.5,
-    "peak_rss_mb": 262.46,
+    "e2e_latency_ms": 11030.04,
+    "total_proof_gen_ms": 10011.66,
+    "total_verify_ms": 683.66,
+    "peak_rss_mb": 262.08,
     "hash_chain_ok": true,
     "detection_accuracy": 1.0,
     "fault_at": null,
     "fault_type": null,
     "verify_ratio": 1.0,
+    "actual_proof_fraction": 1.0,
     "verified_slices": [
       1,
       2,
@@ -139,18 +156,20 @@
     ],
     "num_slices": 8,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_8s_vr1.00_normal"
   },
   {
-    "e2e_latency_ms": 13831.7,
-    "total_proof_gen_ms": 12881.4,
-    "total_verify_ms": 550.06,
-    "peak_rss_mb": 262.68,
+    "e2e_latency_ms": 10520.55,
+    "total_proof_gen_ms": 9759.17,
+    "total_verify_ms": 511.6,
+    "peak_rss_mb": 262.59,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 8,
     "fault_type": "tamper",
     "verify_ratio": 1.0,
+    "actual_proof_fraction": 1.0,
     "verified_slices": [
       1,
       2,
@@ -165,98 +184,116 @@
     "malicious_detected": [
       8
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_8s_vr1.00_fault"
   },
   {
-    "e2e_latency_ms": 6264.66,
-    "total_proof_gen_ms": 5801.53,
-    "total_verify_ms": 201.32,
-    "peak_rss_mb": 261.9,
+    "e2e_latency_ms": 6811.48,
+    "total_proof_gen_ms": 6221.96,
+    "total_verify_ms": 312.33,
+    "peak_rss_mb": 262.62,
     "hash_chain_ok": true,
     "detection_accuracy": 1.0,
     "fault_at": null,
     "fault_type": null,
     "verify_ratio": 0.5,
+    "actual_proof_fraction": 0.625,
     "verified_slices": [
       1,
+      3,
       5,
       7,
       8
     ],
     "num_slices": 8,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_8s_vr0.50_normal"
   },
   {
-    "e2e_latency_ms": 6993.83,
-    "total_proof_gen_ms": 6521.08,
-    "total_verify_ms": 231.49,
-    "peak_rss_mb": 263.31,
+    "e2e_latency_ms": 7563.7,
+    "total_proof_gen_ms": 7135.87,
+    "total_verify_ms": 270.13,
+    "peak_rss_mb": 264.33,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 8,
     "fault_type": "tamper",
     "verify_ratio": 0.5,
+    "actual_proof_fraction": 0.625,
     "verified_slices": [
       1,
-      2,
-      4,
+      3,
+      5,
+      7,
       8
     ],
     "num_slices": 8,
     "malicious_detected": [
       8
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_8s_vr0.50_fault"
   },
   {
-    "e2e_latency_ms": 3760.52,
-    "total_proof_gen_ms": 3638.14,
-    "total_verify_ms": 65.35,
-    "peak_rss_mb": 263.87,
+    "e2e_latency_ms": 8237.01,
+    "total_proof_gen_ms": 7774.0,
+    "total_verify_ms": 289.61,
+    "peak_rss_mb": 265.93,
     "hash_chain_ok": true,
     "detection_accuracy": 1.0,
     "fault_at": null,
     "fault_type": null,
     "verify_ratio": 0.25,
+    "actual_proof_fraction": 0.625,
     "verified_slices": [
       1,
+      3,
+      5,
+      7,
       8
     ],
     "num_slices": 8,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_8s_vr0.25_normal"
   },
   {
-    "e2e_latency_ms": 3510.38,
-    "total_proof_gen_ms": 3316.66,
-    "total_verify_ms": 70.99,
-    "peak_rss_mb": 265.89,
+    "e2e_latency_ms": 7375.35,
+    "total_proof_gen_ms": 6863.5,
+    "total_verify_ms": 318.05,
+    "peak_rss_mb": 266.08,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 8,
     "fault_type": "tamper",
     "verify_ratio": 0.25,
+    "actual_proof_fraction": 0.625,
     "verified_slices": [
       1,
+      3,
+      5,
+      7,
       8
     ],
     "num_slices": 8,
     "malicious_detected": [
       8
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P1_8s_vr0.25_fault"
   },
   {
-    "e2e_latency_ms": 8706.45,
-    "total_proof_gen_ms": 8208.58,
-    "total_verify_ms": 301.08,
-    "peak_rss_mb": 261.32,
+    "e2e_latency_ms": 6535.93,
+    "total_proof_gen_ms": 5987.7,
+    "total_verify_ms": 398.72,
+    "peak_rss_mb": 262.45,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "tamper",
     "verify_ratio": 1.0,
+    "actual_proof_fraction": 1.0,
     "verified_slices": [
       1,
       2,
@@ -267,38 +304,43 @@
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P3_4s_tamper_vr1.00"
   },
   {
-    "e2e_latency_ms": 4504.78,
-    "total_proof_gen_ms": 4253.99,
-    "total_verify_ms": 66.22,
-    "peak_rss_mb": 261.79,
+    "e2e_latency_ms": 4410.34,
+    "total_proof_gen_ms": 4106.73,
+    "total_verify_ms": 191.43,
+    "peak_rss_mb": 263.11,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "tamper",
     "verify_ratio": 0.5,
+    "actual_proof_fraction": 0.75,
     "verified_slices": [
       1,
+      3,
       4
     ],
     "num_slices": 4,
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P3_4s_tamper_vr0.50"
   },
   {
-    "e2e_latency_ms": 8076.72,
-    "total_proof_gen_ms": 7742.54,
-    "total_verify_ms": 149.8,
-    "peak_rss_mb": 262.41,
+    "e2e_latency_ms": 5902.74,
+    "total_proof_gen_ms": 5525.76,
+    "total_verify_ms": 216.12,
+    "peak_rss_mb": 263.5,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "skip",
     "verify_ratio": 1.0,
+    "actual_proof_fraction": 1.0,
     "verified_slices": [
       1,
       2,
@@ -309,38 +351,43 @@
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P3_4s_skip_vr1.00"
   },
   {
-    "e2e_latency_ms": 3779.49,
-    "total_proof_gen_ms": 3553.39,
-    "total_verify_ms": 84.57,
-    "peak_rss_mb": 262.44,
+    "e2e_latency_ms": 4843.44,
+    "total_proof_gen_ms": 4630.89,
+    "total_verify_ms": 123.24,
+    "peak_rss_mb": 263.61,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "skip",
     "verify_ratio": 0.5,
+    "actual_proof_fraction": 0.75,
     "verified_slices": [
       1,
+      3,
       4
     ],
     "num_slices": 4,
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P3_4s_skip_vr0.50"
   },
   {
-    "e2e_latency_ms": 6781.13,
-    "total_proof_gen_ms": 6373.45,
-    "total_verify_ms": 149.3,
-    "peak_rss_mb": 264.43,
+    "e2e_latency_ms": 6452.77,
+    "total_proof_gen_ms": 6100.67,
+    "total_verify_ms": 220.96,
+    "peak_rss_mb": 270.43,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "random",
     "verify_ratio": 1.0,
+    "actual_proof_fraction": 1.0,
     "verified_slices": [
       1,
       2,
@@ -351,38 +398,43 @@
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P3_4s_random_vr1.00"
   },
   {
-    "e2e_latency_ms": 3093.81,
-    "total_proof_gen_ms": 2938.23,
-    "total_verify_ms": 74.06,
-    "peak_rss_mb": 265.34,
+    "e2e_latency_ms": 5111.72,
+    "total_proof_gen_ms": 4826.1,
+    "total_verify_ms": 183.38,
+    "peak_rss_mb": 270.46,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "random",
     "verify_ratio": 0.5,
+    "actual_proof_fraction": 0.75,
     "verified_slices": [
       1,
+      3,
       4
     ],
     "num_slices": 4,
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P3_4s_random_vr0.50"
   },
   {
-    "e2e_latency_ms": 5968.39,
-    "total_proof_gen_ms": 5748.43,
-    "total_verify_ms": 140.78,
-    "peak_rss_mb": 270.21,
+    "e2e_latency_ms": 6484.43,
+    "total_proof_gen_ms": 6080.0,
+    "total_verify_ms": 257.95,
+    "peak_rss_mb": 270.8,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "replay",
     "verify_ratio": 1.0,
+    "actual_proof_fraction": 1.0,
     "verified_slices": [
       1,
       2,
@@ -393,26 +445,30 @@
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P3_4s_replay_vr1.00"
   },
   {
-    "e2e_latency_ms": 3170.47,
-    "total_proof_gen_ms": 3055.7,
-    "total_verify_ms": 62.04,
-    "peak_rss_mb": 270.21,
+    "e2e_latency_ms": 5042.13,
+    "total_proof_gen_ms": 4771.07,
+    "total_verify_ms": 183.0,
+    "peak_rss_mb": 271.55,
     "hash_chain_ok": false,
     "detection_accuracy": 1.0,
     "fault_at": 4,
     "fault_type": "replay",
     "verify_ratio": 0.5,
+    "actual_proof_fraction": 0.75,
     "verified_slices": [
       1,
+      3,
       4
     ],
     "num_slices": 4,
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     "experiment": "P3_4s_replay_vr0.50"
   }
 ]
