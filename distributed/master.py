@@ -216,10 +216,10 @@ def run_pipeline(
             proof_data_for_linking = data.get("proof") or {}
             ppi = proof_data_for_linking.get("pretty_public_inputs") or {}
             data["proof_instances"] = {
-                "processed_inputs": ppi.get("processed_inputs") or ppi.get("inputs") or None,
-                "processed_outputs": ppi.get("processed_outputs") or ppi.get("outputs") or None,
-                "rescaled_inputs": ppi.get("rescaled_inputs") or None,
-                "rescaled_outputs": ppi.get("rescaled_outputs") or None,
+                "processed_inputs": ppi.get("processed_inputs") if ppi.get("processed_inputs") else None,
+                "processed_outputs": ppi.get("processed_outputs") if ppi.get("processed_outputs") else None,
+                "rescaled_inputs": ppi.get("rescaled_inputs") if ppi.get("rescaled_inputs") else None,
+                "rescaled_outputs": ppi.get("rescaled_outputs") if ppi.get("rescaled_outputs") else None,
             }
 
             if not local_verified:
@@ -274,10 +274,11 @@ def run_pipeline(
         else:
             print(f"    ✓ L1 Output integrity OK (slice {sid})")
 
-        # 层 2：ZKP Proof Linking — 密码学安全级（系统唯一的密码学安全来源）
-        #   → 比对 prev.processed_outputs == curr.processed_inputs
-        #   → 这是 ZKP 公开实例，verify 通过 = 数学保证
-        #   → 安全前提：Poseidon collision-resistance + PLONK soundness
+        # 层 2：ZKP Proof Linking
+        #   → 比对 prev.outputs vs curr.inputs 的受认证公开实例
+        #   → 在 hashed 模式下，processed_outputs/inputs 是 Poseidon 哈希，具有密码学保证
+        #   → 在 all_public 模式下，两个独立编译的电路量化参数不同，
+        #     同一份浮点数据的量化值可能不相等 → linking 不适用
         #   → 边覆盖策略确保每条边至少一端有 ZKP
         if i > 0 and use_proof:
             prev = results[-1]
@@ -285,9 +286,15 @@ def run_pipeline(
             curr_instances = data.get("proof_instances")
 
             if prev_instances and curr_instances:
+                # 优先用 processed_outputs/inputs（hashed 模式，密码学级）
                 prev_out = prev_instances.get("processed_outputs")
                 curr_in = curr_instances.get("processed_inputs")
-                if prev_out is not None and curr_in is not None:
+
+                # 空列表表示 all_public 模式，无有效 linking 数据
+                prev_out_valid = prev_out and len(prev_out) > 0
+                curr_in_valid = curr_in and len(curr_in) > 0
+
+                if prev_out_valid and curr_in_valid:
                     proof_linked = (prev_out == curr_in)
                     if not proof_linked:
                         hash_chain_ok = False
@@ -300,7 +307,10 @@ def run_pipeline(
                     else:
                         print(f"    ✓ L2 Proof linked OK (slice {prev['slice_id']} → {sid})")
                 else:
-                    print(f"    ℹ L2 Skip (no processed instances)")
+                    # all_public 模式：无 processed instances，linking 不适用
+                    # 依赖 L3 哈希链 + 随机挑战提供一致性保障
+                    print(f"    ℹ L2 Skip (all_public mode: independent quantization, "
+                          f"linking not applicable)")
             else:
                 print(f"    ℹ L2 Skip (proof_instances not available)")
 
