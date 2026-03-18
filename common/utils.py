@@ -189,6 +189,7 @@ def ezkl_prove(data_path: str, paths: dict, artifacts_dir: str) -> dict:
         "metrics": {
             "proof_gen_ms": round(proof_gen_ms, 2),
             "verify_ms": round(verify_ms, 2),
+            # 近似 RSS：仅取 prove 前后两点的 RSS 最大值，非真实峰值
             "peak_rss_mb": round(max(mem_start, mem_end), 2),
             "proof_size_bytes": proof_size_bytes,
             "witness_size_bytes": witness_size_bytes,

@@ -93,6 +93,8 @@ Worker 1 Worker 2 ... Worker N
 
 **L2 是系统密码学安全来源，但仅在相邻切片均被选为 proof 模式时提供跨节点密码学约束。** 当一端为 light 节点时，该边退化为 L1+L3 的故障检测级保护，辅以随机挑战机制。
 
+**L2 linking 与隐私模式的关系**：L2 跨切片约束仅在 `hashed` 模式下有意义。`all_public` 模式下，EZKL 对每个切片独立编译电路时使用不同量化参数（input_scale / param_scale），同一份浮点数据在两个切片的电路中量化为不同 field element，导致 `processed_inputs ≠ processed_outputs`；Master 检测到不匹配后回退跳过。只有 `hashed` 模式下 Poseidon 哈希才产生跨切片一致性约束。
+
 ### 3.3 边覆盖策略
 
 ```
@@ -223,7 +225,7 @@ for worker in workers:
 
 | 对手类型 | 检测率 |
 |---|---|
-| 独立恶意 | ✅ 100% |
+| 独立恶意 | ✅ 100%（当前攻击模型——响应层篡改——下） |
 | 相邻合谋 | ⚠️ 概率性 |
 | 全局合谋 | ⚠️ 概率性 |
 
@@ -257,6 +259,8 @@ for worker in workers:
 | 100% | 11,448ms | 100% |
 | 50% | 5,802ms (-49%) | 100% |
 | 25% | 3,638ms (-68%) | 100% |
+
+> 上述检测率为当前攻击模型（响应层篡改）下的结果，实验脚本覆盖 L1+L3 校验。
 
 **P2 隐私模式**：
 | 模式 | 开销 | 倍数 |
@@ -382,6 +386,8 @@ Start-Sleep -Seconds 30
 | proof 数 O(N) | Nova/SuperNova IVC |
 | 无数据隐私 | MPC/HE（超出范畴） |
 | 模型规模小 | 升级 CNN |
+| 实验脚本走简化管线（L1+L3），未走 Master 完整逻辑（无独立 proof verify、无 L2 linking、无随机挑战） | 实验指标（开销、检测率）反映 L1+L3 覆盖范围，完整校验效果需参考 Master 设计 |
+| L2 proof linking 仅在 hashed 模式下提供密码学级跨切片约束；all_public 模式下由于各切片独立量化参数（input_scale/param_scale）致 processed_inputs ≠ processed_outputs 而不适用 | 使用 hashed 模式运行 L2 linking |
 
 ### 12.2 未来方向
 

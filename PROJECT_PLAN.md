@@ -30,7 +30,7 @@
 ### 本系统的核心创新点
 
 1. **Pipeline + ZKP**：将 zkML 从单机推理扩展到多节点流水线场景
-2. **Proof Linking**：跨节点状态一致性约束（`prev.processed_outputs == curr.processed_inputs`）
+2. **Proof Linking**：跨节点状态一致性约束（`prev.processed_outputs == curr.processed_inputs`，仅 hashed 模式下有效；all_public 模式因独立量化参数不适用）
 3. **选择性验证 + 一致性保障**：edge-cover 选点策略（`∀ edge (i,i+1): i ∈ ZKP ∨ (i+1) ∈ ZKP`）确保 proof 覆盖密度；L2 proof linking 仅在相邻 proof 间提供密码学约束，light 节点处退化为 L1+L3 故障检测 + 随机挑战
 4. **Sampling Verification**：证明开销 vs 安全性的可配置 tradeoff
 
@@ -412,6 +412,8 @@ $$P_{detect}^{collusion} = 1 - P_{escape}$$
 - proof 数量 O(N) → 需要递归 SNARK（EZKL v23 不支持）
 - light 节点的 L1 哈希校验可被恶意 Worker 同时伪造 output+hash 绕过 → 防线是随机挑战 re_prove（概率性威慑）
 - 跨节点传输中间数据的原像承诺（数据离开 proof 保护后可被中途篡改）→ 需要 EZKL polycommit/swap_proof_commitments 级别的 proof composition
+- L2 proof linking 仅在 hashed 模式下提供密码学级跨切片约束；all_public 模式下由于各切片独立量化参数（input_scale/param_scale）致 processed_inputs ≠ processed_outputs 而不适用
+- 实验脚本（run_experiments.py、run_advanced_experiments.py）走简化管线（L1+L3），未走 Master 完整校验逻辑（无独立 proof verify、无 L2 linking、无随机挑战）
 
 ---
 
@@ -430,6 +432,8 @@ $$P_{detect}^{collusion} = 1 - P_{escape}$$
 保真度损失主要来自两个环节：
 1. **模型切片本身**：PyTorch 层级切分是精确的（bit-exact），不引入误差
 2. **EZKL 量化**：EZKL 将浮点数转为定点表示（input_scale=13, param_scale=13），引入量化误差
+
+> **注**：当前 P4 实验仅测量来源 1（PyTorch 切片串联输出 vs 完整 PyTorch 模型输出），属于 PyTorch 切片一致性验证，未涉及 ONNXRuntime 推理路径或 EZKL 量化路径的保真度。
 
 ### 10.3 代码实现
 
