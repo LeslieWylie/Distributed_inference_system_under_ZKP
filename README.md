@@ -56,10 +56,10 @@ $PYTHON = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 ├── scripts/                 # 运行脚本
 │   ├── run_single_machine_demo.py    # 阶段1
 │   ├── run_stage2.py                 # 阶段2 一键启动
-│   ├── run_experiments.py            # 阶段3 基础实验
-│   ├── run_advanced_experiments.py   # P1+P3 综合实验
-│   ├── run_p2_experiment.py          # P2 隐私模式
-│   └── run_p4_p6_experiment.py       # P4保真度+P6 ZK链
+│   ├── run_experiments.py            # 阶段3 基础实验 (简化管线, L1+L3)
+│   ├── run_advanced_experiments.py   # P1+P3 选择性验证+多攻击 (简化管线)
+│   ├── run_p2_experiment.py          # P2 隐私模式对比
+│   └── run_p4_p6_experiment.py       # P4保真度+P6完整性检查对比
 │
 ├── metrics/                 # 实验结果 (JSON)
 ├── survey/                  # 开题报告 + 参考文献

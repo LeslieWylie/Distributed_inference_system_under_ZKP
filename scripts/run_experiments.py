@@ -123,7 +123,8 @@ def run_single_pipeline(
 
         resp = requests.post(
             f"{w['url']}/infer",
-            json={"input_data": current_input, "request_id": f"exp-{sid}"},
+            json={"input_data": current_input,
+                  "request_id": f"exp-{sid}-{int(time.time()*1000)}"},
             params={"fault_type": "tamper" if inject else "none"},
             timeout=120,
         )
@@ -162,6 +163,8 @@ def run_single_pipeline(
     else:
         detection_accuracy = 1.0 if len(malicious_nodes) == 0 else 0.0
 
+    fault_detected = bool(malicious_nodes) if fault_at is not None else None
+
     return {
         "e2e_latency_ms": round(e2e_ms, 2),
         "total_proof_gen_ms": round(total_proof_ms, 2),
@@ -170,9 +173,10 @@ def run_single_pipeline(
         "avg_verify_ms": round(avg_verify_ms, 2),
         "peak_rss_mb": round(max_rss, 2),
         "hash_chain_ok": hash_chain_ok,
-        "detection_accuracy": detection_accuracy,
+        "fault_detected": fault_detected,
         "fault_at": fault_at,
         "malicious_detected": malicious_nodes,
+        "evaluation_scope": "simplified_L1_L3_only",
         "slices": [
             {
                 "slice_id": r["slice_id"],
@@ -193,7 +197,8 @@ def run_throughput_test(workers: list, initial_input: list, num_requests: int = 
         for w in workers:
             resp = requests.post(
                 f"{w['url']}/infer",
-                json={"input_data": current, "request_id": "throughput"},
+                json={"input_data": current,
+                      "request_id": f"tp-{int(time.time()*1000)}"},
                 params={"fault_type": "none"},
                 timeout=120,
             )
@@ -281,7 +286,7 @@ def run_experiment_suite():
         print(f"{r['num_slices']:>6} {mode:>12} {r['e2e_latency_ms']:>10.0f} "
               f"{r['total_proof_gen_ms']:>10.0f} {r['total_verify_ms']:>11.0f} "
               f"{r['peak_rss_mb']:>9.0f} {r.get('throughput_req_per_sec', 0):>10.4f} "
-              f"{r['detection_accuracy']:>10.0%}")
+              f"{r['fault_detected']!s:>10}")
 
     return all_results
 
