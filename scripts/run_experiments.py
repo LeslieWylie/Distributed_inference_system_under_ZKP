@@ -249,7 +249,7 @@ def run_experiment_suite():
             fault_result["experiment"] = f"{num_slices}s_fault_last"
             fault_result["num_slices"] = num_slices
             print(f"  e2e={fault_result['e2e_latency_ms']:.0f}ms "
-                  f"detected={fault_result['detection_accuracy']:.0%} "
+                  f"detected={fault_result['fault_detected']} "
                   f"chain={'OK' if fault_result['hash_chain_ok'] else 'FAIL'}")
 
             # 5. 吞吐量测试 (正常模式 × 3 次)
@@ -279,7 +279,7 @@ def run_experiment_suite():
 
     # 打印汇总表
     print(f"\n{'切片数':>6} {'模式':>12} {'e2e(ms)':>10} {'proof(ms)':>10} "
-          f"{'verify(ms)':>11} {'RSS(MB)':>9} {'吞吐(r/s)':>10} {'检测准确率':>10}")
+          f"{'verify(ms)':>11} {'RSS(MB)':>9} {'吞吐(r/s)':>10} {'故障检测':>10}")
     print("-" * 90)
     for r in all_results:
         mode = "正常" if r["fault_at"] is None else f"故障@{r['fault_at']}"
