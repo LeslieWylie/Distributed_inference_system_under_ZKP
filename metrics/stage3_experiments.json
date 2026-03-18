@@ -1,11 +1,11 @@
 [
   {
-    "e2e_latency_ms": 2768.56,
-    "total_proof_gen_ms": 2520.17,
-    "total_verify_ms": 164.69,
-    "avg_proof_gen_ms": 1260.09,
-    "avg_verify_ms": 82.34,
-    "peak_rss_mb": 260.61,
+    "e2e_latency_ms": 3161.24,
+    "total_proof_gen_ms": 2840.79,
+    "total_verify_ms": 179.21,
+    "avg_proof_gen_ms": 1420.39,
+    "avg_verify_ms": 89.6,
+    "peak_rss_mb": 259.57,
     "hash_chain_ok": true,
     "fault_detected": null,
     "fault_at": null,
@@ -14,28 +14,28 @@
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1170.7,
-        "verify_ms": 85.73,
-        "peak_rss_mb": 258.16
+        "proof_gen_ms": 1242.89,
+        "verify_ms": 66.46,
+        "peak_rss_mb": 259.57
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1349.47,
-        "verify_ms": 78.96,
-        "peak_rss_mb": 260.61
+        "proof_gen_ms": 1597.9,
+        "verify_ms": 112.75,
+        "peak_rss_mb": 259.06
       }
     ],
     "experiment": "2s_normal",
     "num_slices": 2,
-    "throughput_req_per_sec": 0.3066
+    "throughput_req_per_sec": 0.3323
   },
   {
-    "e2e_latency_ms": 2816.2,
-    "total_proof_gen_ms": 2629.91,
-    "total_verify_ms": 137.75,
-    "avg_proof_gen_ms": 1314.95,
-    "avg_verify_ms": 68.88,
-    "peak_rss_mb": 261.95,
+    "e2e_latency_ms": 3867.41,
+    "total_proof_gen_ms": 3618.72,
+    "total_verify_ms": 192.69,
+    "avg_proof_gen_ms": 1809.36,
+    "avg_verify_ms": 96.34,
+    "peak_rss_mb": 260.62,
     "hash_chain_ok": false,
     "fault_detected": true,
     "fault_at": 2,
@@ -46,28 +46,28 @@
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1410.17,
-        "verify_ms": 69.63,
-        "peak_rss_mb": 259.54
+        "proof_gen_ms": 1861.88,
+        "verify_ms": 121.24,
+        "peak_rss_mb": 260.51
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1219.74,
-        "verify_ms": 68.12,
-        "peak_rss_mb": 261.95
+        "proof_gen_ms": 1756.84,
+        "verify_ms": 71.45,
+        "peak_rss_mb": 260.62
       }
     ],
     "experiment": "2s_fault_last",
     "num_slices": 2,
-    "throughput_req_per_sec": 0.3066
+    "throughput_req_per_sec": 0.3323
   },
   {
-    "e2e_latency_ms": 5903.17,
-    "total_proof_gen_ms": 5300.72,
-    "total_verify_ms": 323.6,
-    "avg_proof_gen_ms": 1325.18,
-    "avg_verify_ms": 80.9,
-    "peak_rss_mb": 263.5,
+    "e2e_latency_ms": 6385.85,
+    "total_proof_gen_ms": 5647.03,
+    "total_verify_ms": 360.17,
+    "avg_proof_gen_ms": 1411.76,
+    "avg_verify_ms": 90.04,
+    "peak_rss_mb": 260.8,
     "hash_chain_ok": true,
     "fault_detected": null,
     "fault_at": null,
@@ -76,40 +76,40 @@
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1423.48,
-        "verify_ms": 106.57,
-        "peak_rss_mb": 260.62
+        "proof_gen_ms": 1657.38,
+        "verify_ms": 96.09,
+        "peak_rss_mb": 260.17
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1303.73,
-        "verify_ms": 70.08,
-        "peak_rss_mb": 260.2
+        "proof_gen_ms": 1340.54,
+        "verify_ms": 100.13,
+        "peak_rss_mb": 260.29
       },
       {
         "slice_id": 3,
-        "proof_gen_ms": 1293.95,
-        "verify_ms": 69.07,
-        "peak_rss_mb": 263.5
+        "proof_gen_ms": 1355.55,
+        "verify_ms": 79.07,
+        "peak_rss_mb": 260.13
       },
       {
         "slice_id": 4,
-        "proof_gen_ms": 1279.56,
-        "verify_ms": 77.88,
-        "peak_rss_mb": 262.08
+        "proof_gen_ms": 1293.56,
+        "verify_ms": 84.88,
+        "peak_rss_mb": 260.8
       }
     ],
     "experiment": "4s_normal",
     "num_slices": 4,
-    "throughput_req_per_sec": 0.1736
+    "throughput_req_per_sec": 0.14
   },
   {
-    "e2e_latency_ms": 5469.71,
-    "total_proof_gen_ms": 5098.34,
-    "total_verify_ms": 237.79,
-    "avg_proof_gen_ms": 1274.59,
-    "avg_verify_ms": 59.45,
-    "peak_rss_mb": 264.84,
+    "e2e_latency_ms": 7506.44,
+    "total_proof_gen_ms": 7074.72,
+    "total_verify_ms": 245.88,
+    "avg_proof_gen_ms": 1768.68,
+    "avg_verify_ms": 61.47,
+    "peak_rss_mb": 262.55,
     "hash_chain_ok": false,
     "fault_detected": true,
     "fault_at": 4,
@@ -120,40 +120,40 @@
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1204.23,
-        "verify_ms": 64.58,
-        "peak_rss_mb": 261.71
+        "proof_gen_ms": 1243.49,
+        "verify_ms": 88.59,
+        "peak_rss_mb": 260.67
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1200.65,
-        "verify_ms": 48.38,
-        "peak_rss_mb": 262.55
+        "proof_gen_ms": 1309.54,
+        "verify_ms": 53.57,
+        "peak_rss_mb": 262.34
       },
       {
         "slice_id": 3,
-        "proof_gen_ms": 1262.54,
-        "verify_ms": 53.32,
-        "peak_rss_mb": 264.84
+        "proof_gen_ms": 3003.39,
+        "verify_ms": 51.97,
+        "peak_rss_mb": 262.55
       },
       {
         "slice_id": 4,
-        "proof_gen_ms": 1430.92,
-        "verify_ms": 71.51,
-        "peak_rss_mb": 263.02
+        "proof_gen_ms": 1518.3,
+        "verify_ms": 51.75,
+        "peak_rss_mb": 262.5
       }
     ],
     "experiment": "4s_fault_last",
     "num_slices": 4,
-    "throughput_req_per_sec": 0.1736
+    "throughput_req_per_sec": 0.14
   },
   {
-    "e2e_latency_ms": 10941.87,
-    "total_proof_gen_ms": 9747.26,
-    "total_verify_ms": 650.76,
-    "avg_proof_gen_ms": 1218.41,
-    "avg_verify_ms": 81.34,
-    "peak_rss_mb": 263.91,
+    "e2e_latency_ms": 12802.5,
+    "total_proof_gen_ms": 11442.68,
+    "total_verify_ms": 701.86,
+    "avg_proof_gen_ms": 1430.34,
+    "avg_verify_ms": 87.73,
+    "peak_rss_mb": 261.81,
     "hash_chain_ok": true,
     "fault_detected": null,
     "fault_at": null,
@@ -162,64 +162,64 @@
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1081.62,
-        "verify_ms": 89.64,
-        "peak_rss_mb": 261.3
+        "proof_gen_ms": 1433.51,
+        "verify_ms": 83.41,
+        "peak_rss_mb": 259.7
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1278.88,
-        "verify_ms": 75.57,
-        "peak_rss_mb": 259.78
+        "proof_gen_ms": 1299.94,
+        "verify_ms": 67.43,
+        "peak_rss_mb": 260.19
       },
       {
         "slice_id": 3,
-        "proof_gen_ms": 1263.98,
-        "verify_ms": 85.51,
-        "peak_rss_mb": 258.11
+        "proof_gen_ms": 1328.21,
+        "verify_ms": 95.79,
+        "peak_rss_mb": 259.86
       },
       {
         "slice_id": 4,
-        "proof_gen_ms": 1214.11,
-        "verify_ms": 74.55,
-        "peak_rss_mb": 258.85
+        "proof_gen_ms": 1390.12,
+        "verify_ms": 100.36,
+        "peak_rss_mb": 259.61
       },
       {
         "slice_id": 5,
-        "proof_gen_ms": 1242.9,
-        "verify_ms": 74.03,
-        "peak_rss_mb": 262.93
+        "proof_gen_ms": 1714.8,
+        "verify_ms": 85.72,
+        "peak_rss_mb": 261.81
       },
       {
         "slice_id": 6,
-        "proof_gen_ms": 1218.77,
-        "verify_ms": 91.32,
-        "peak_rss_mb": 262.72
+        "proof_gen_ms": 1544.32,
+        "verify_ms": 93.79,
+        "peak_rss_mb": 258.87
       },
       {
         "slice_id": 7,
-        "proof_gen_ms": 1195.16,
-        "verify_ms": 85.92,
-        "peak_rss_mb": 263.91
+        "proof_gen_ms": 1444.84,
+        "verify_ms": 104.42,
+        "peak_rss_mb": 259.04
       },
       {
         "slice_id": 8,
-        "proof_gen_ms": 1251.84,
-        "verify_ms": 74.22,
-        "peak_rss_mb": 263.84
+        "proof_gen_ms": 1286.94,
+        "verify_ms": 70.94,
+        "peak_rss_mb": 259.61
       }
     ],
     "experiment": "8s_normal",
     "num_slices": 8,
-    "throughput_req_per_sec": 0.0689
+    "throughput_req_per_sec": 0.0783
   },
   {
-    "e2e_latency_ms": 10673.15,
-    "total_proof_gen_ms": 10052.68,
-    "total_verify_ms": 400.09,
-    "avg_proof_gen_ms": 1256.59,
-    "avg_verify_ms": 50.01,
-    "peak_rss_mb": 264.57,
+    "e2e_latency_ms": 13697.25,
+    "total_proof_gen_ms": 13014.77,
+    "total_verify_ms": 494.59,
+    "avg_proof_gen_ms": 1626.85,
+    "avg_verify_ms": 61.82,
+    "peak_rss_mb": 262.02,
     "hash_chain_ok": false,
     "fault_detected": true,
     "fault_at": 8,
@@ -230,55 +230,55 @@
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1226.44,
-        "verify_ms": 56.2,
-        "peak_rss_mb": 262.38
+        "proof_gen_ms": 1354.03,
+        "verify_ms": 51.88,
+        "peak_rss_mb": 261.05
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1230.84,
-        "verify_ms": 45.04,
-        "peak_rss_mb": 261.78
+        "proof_gen_ms": 1712.61,
+        "verify_ms": 74.79,
+        "peak_rss_mb": 261.46
       },
       {
         "slice_id": 3,
-        "proof_gen_ms": 1271.09,
-        "verify_ms": 58.52,
-        "peak_rss_mb": 259.84
+        "proof_gen_ms": 1724.63,
+        "verify_ms": 41.0,
+        "peak_rss_mb": 261.85
       },
       {
         "slice_id": 4,
-        "proof_gen_ms": 1201.62,
-        "verify_ms": 51.4,
-        "peak_rss_mb": 260.53
+        "proof_gen_ms": 1722.34,
+        "verify_ms": 48.24,
+        "peak_rss_mb": 261.32
       },
       {
         "slice_id": 5,
-        "proof_gen_ms": 1260.64,
-        "verify_ms": 46.86,
-        "peak_rss_mb": 264.48
+        "proof_gen_ms": 1747.95,
+        "verify_ms": 53.38,
+        "peak_rss_mb": 262.02
       },
       {
         "slice_id": 6,
-        "proof_gen_ms": 1375.93,
-        "verify_ms": 45.83,
-        "peak_rss_mb": 263.93
+        "proof_gen_ms": 1533.14,
+        "verify_ms": 83.54,
+        "peak_rss_mb": 261.53
       },
       {
         "slice_id": 7,
-        "proof_gen_ms": 1254.93,
-        "verify_ms": 47.76,
-        "peak_rss_mb": 264.57
+        "proof_gen_ms": 1682.66,
+        "verify_ms": 59.47,
+        "peak_rss_mb": 261.14
       },
       {
         "slice_id": 8,
-        "proof_gen_ms": 1231.19,
-        "verify_ms": 48.48,
-        "peak_rss_mb": 264.42
+        "proof_gen_ms": 1537.41,
+        "verify_ms": 82.29,
+        "peak_rss_mb": 261.09
       }
     ],
     "experiment": "8s_fault_last",
     "num_slices": 8,
-    "throughput_req_per_sec": 0.0689
+    "throughput_req_per_sec": 0.0783
   }
 ]
