@@ -149,6 +149,26 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict,
         except OSError:
             pass
 
+        # ── Proof-bound output ──
+        # 从 proof 公开实例提取 rescaled_outputs 作为实际输出，
+        # 替代 onnxruntime 独立推理的浮点结果。
+        # 效果：proof 验证通过 ⟹ output_data 必然正确。
+        # 恶意 Worker 无法生成有效 proof 同时返回篡改的 output。
+        proof_ppi = (result.get("proof") or {}).get(
+            "pretty_public_inputs", {})
+        rescaled = proof_ppi.get("rescaled_outputs", [])
+        if rescaled:
+            proof_output = []
+            for group in rescaled:
+                if isinstance(group, list):
+                    for v in group:
+                        proof_output.append(float(v))
+                else:
+                    proof_output.append(float(group))
+            if proof_output:
+                output_data = proof_output
+                hash_out = sha256_of_list(output_data)
+
         forward_ms = (time.perf_counter() - t_start) * 1000
         result["metrics"]["forward_ms"] = round(forward_ms, 2)
         result["metrics"]["request_id"] = request_id

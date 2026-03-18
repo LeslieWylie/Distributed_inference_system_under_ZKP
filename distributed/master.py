@@ -336,6 +336,43 @@ def run_pipeline(
             else:
                 print(f"    ✓ Hash chain OK (slice {prev['slice_id']} → {sid})")
 
+        # ── Proof-output binding (Master 侧独立验证) ──
+        # 对 proof 节点：Master 从 proof 公开实例独立提取电路输出，
+        # 与 Worker 声称的 output_data 交叉比对。
+        # 使用 proof 绑定的输出作为下游输入（不信任 Worker 声称的值）。
+        if use_proof and data.get("verified"):
+            ppi = (data.get("proof") or {}).get(
+                "pretty_public_inputs", {})
+            rescaled = ppi.get("rescaled_outputs", [])
+            if rescaled:
+                proof_output = []
+                for group in rescaled:
+                    if isinstance(group, list):
+                        for v in group:
+                            proof_output.append(float(v))
+                    else:
+                        proof_output.append(float(group))
+                if (proof_output
+                        and len(proof_output) == len(data["output_data"])):
+                    max_diff = max(
+                        abs(a - b)
+                        for a, b in zip(proof_output, data["output_data"])
+                    )
+                    if max_diff > 1.0:
+                        hash_chain_ok = False
+                        l1_findings.append({
+                            "type": "output_proof_mismatch",
+                            "slice_id": sid,
+                            "max_diff": round(max_diff, 6),
+                        })
+                        print(f"    ⚠ OUTPUT-PROOF MISMATCH at slice {sid} "
+                              f"(max_diff={max_diff:.6f})")
+                    else:
+                        print(f"    ✓ Output matches proof "
+                              f"(max_diff={max_diff:.6f})")
+                    data["output_data"] = proof_output
+                    data["hash_out"] = sha256_of_list(proof_output)
+
         # 补充 Master 侧指标
         data["metrics"]["rtt_ms"] = round(rtt_ms, 2)
         data["request_input"] = list(current_input)

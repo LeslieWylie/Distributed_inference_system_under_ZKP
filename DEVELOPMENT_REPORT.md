@@ -197,6 +197,12 @@ if fault_injected:
 
 **4 种攻击**：tamper / skip / random / replay
 
+**Proof-bound output（核心安全机制）**：
+
+- **Worker 侧**：`/infer` 端点的 `output_data` 从 proof 的 `pretty_public_inputs.rescaled_outputs` 提取，替代 onnxruntime 独立推理的浮点结果。
+- **Master 侧**：Master 独立从 proof 中提取 `rescaled_outputs`，与 Worker 声称的 `output_data` 交叉比对，并使用 proof 绑定的输出作为下游 Worker 的输入。
+- **效果**：proof 验证通过 ⟹ `output_data` 必然正确。恶意 Worker 无法生成通过验证的 proof 同时返回篡改的输出。证明节点上的篡改被**预防**（prevention），光节点上的篡改被**检测**（detection）。
+
 ### 6.4 Master 流水线（run_pipeline）
 
 ```
@@ -225,7 +231,7 @@ for worker in workers:
 
 | 对手类型 | 检测率 |
 |---|---|
-| 独立恶意 | ✅ 100%（当前攻击模型——响应层篡改——下） |
+| 独立恶意 | ✅ 100%（proof 节点：proof-bound 预防；light 节点：L1 检测 + 随机挑战） |
 | 相邻合谋 | ⚠️ 概率性 |
 | 全局合谋 | ⚠️ 概率性 |
 

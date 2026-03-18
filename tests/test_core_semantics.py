@@ -214,5 +214,65 @@ class TestWorkerArtifactsIsolation(unittest.TestCase):
         )
 
 
+class TestWorkerProofBoundOutput(unittest.TestCase):
+    """验证 /infer 的 output_data 从 proof 公开实例提取，与 proof 数学绑定。"""
+
+    def test_infer_extracts_rescaled_outputs(self):
+        source = inspect.getsource(
+            importlib.import_module("distributed.worker")
+        )
+        self.assertIn(
+            "rescaled_outputs",
+            source,
+            "/infer 未从 proof 的 rescaled_outputs 提取电路输出"
+        )
+
+    def test_infer_overrides_output_data(self):
+        """确认 /infer 中 output_data 被 proof 电路输出覆盖。"""
+        source = inspect.getsource(
+            importlib.import_module("distributed.worker")
+        )
+        in_infer = False
+        has_override = False
+        for line in source.split("\n"):
+            stripped = line.strip()
+            if "def infer(" in stripped:
+                in_infer = True
+            if in_infer and stripped.startswith("def ") and "infer(" not in stripped:
+                break
+            if in_infer and "output_data = proof_output" in stripped:
+                has_override = True
+                break
+        self.assertTrue(
+            has_override,
+            "/infer 没有用 proof 电路输出覆盖 output_data"
+        )
+
+
+class TestMasterProofOutputBinding(unittest.TestCase):
+    """验证 Master 从 proof 公开实例独立提取输出并交叉比对。"""
+
+    def test_master_checks_output_proof_mismatch(self):
+        source = inspect.getsource(
+            importlib.import_module("distributed.master")
+        )
+        self.assertIn(
+            "output_proof_mismatch",
+            source,
+            "Master 缺少 proof-output 交叉比对逻辑"
+        )
+
+    def test_master_overrides_output_with_proof(self):
+        """确认 Master 用 proof 输出覆盖 Worker 声称的 output_data。"""
+        source = inspect.getsource(
+            importlib.import_module("distributed.master")
+        )
+        self.assertIn(
+            'data["output_data"] = proof_output',
+            source,
+            "Master 没有用 proof 输出覆盖 Worker 的 output_data"
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

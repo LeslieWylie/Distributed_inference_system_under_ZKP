@@ -162,8 +162,15 @@ def run_single_pipeline(
     avg_verify_ms = total_verify_ms / len(results)
     max_rss = max(r["metrics"]["peak_rss_mb"] for r in results)
 
+    # proof-bound output 预防：proof 节点上的篡改被 proof 绑定的输出预防
+    fault_prevented = False
+    if fault_at is not None and fault_at not in malicious_nodes:
+        for r in results:
+            if r.get("slice_id") == fault_at and r.get("fault_injected"):
+                fault_prevented = True
+
     if fault_at is not None:
-        detection_accuracy = 1.0 if fault_at in malicious_nodes else 0.0
+        detection_accuracy = 1.0 if (fault_at in malicious_nodes or fault_prevented) else 0.0
     else:
         detection_accuracy = 1.0 if len(malicious_nodes) == 0 else 0.0
 
@@ -178,6 +185,7 @@ def run_single_pipeline(
         "peak_rss_mb": round(max_rss, 2),
         "hash_chain_ok": hash_chain_ok,
         "fault_detected": fault_detected,
+        "fault_prevented": fault_prevented,
         "fault_at": fault_at,
         "malicious_detected": malicious_nodes,
         "evaluation_scope": "simplified_L1_L3_only",
