@@ -445,20 +445,21 @@ Input → Master (调度+校验)
 
 ---
 
-# 图表清单
+# 图表清单（顶会风格，300 DPI）
 
-| 图 | 文件 | 位置 | 说明 |
+| 图 | 文件 | PPT 位置 | 说明 |
 |---|---|:---:|---|
-| 图 1 | `fig01_stage3_latency.png` | **正文 p7** | 2/4/8 切片端到端+proof+verify 柱状图 |
-| 图 2 | `fig02_proof_bound_prevention.png` | 正文 p7 备用 | Proof-bound 故障预防效果 |
-| 图 3 | `fig03_selective_verification.png` | **正文 p8** | 8 切片选择性验证三合一 |
-| 图 4 | `fig04_attack_detection.png` | **正文 p9** | 四类攻击处理结果 |
-| 图 5 | `fig05_visibility_time.png` | **正文 p10** | 三种模式时间开销 |
-| 图 6 | `fig06_visibility_size.png` | **正文 p10** | 三种模式产物大小 |
-| 图 7 | `fig07_p4_fidelity.png` | 备份页 A | 切片一致性验证 |
-| 图 8 | `fig08_p6_integrity.png` | 备份页 B | 完整性检查机制对比 |
-| 图 9 | `fig09_selective_4vs8.png` | **正文 p8** 备用 | 4 vs 8 切片选择性验证趋势 |
-| 无需额外图 | — | — | 所有数据已覆盖 |
+| Fig.1 | `fig01_latency_breakdown.png` | **正文 p7** | Stacked bar: proof/verify/IO 开销分解 (2/4/8 切片) |
+| Fig.2 | `fig02_per_slice_8s.png` | **正文 p7** | 逐切片 proof+verify 时间 (8 切片) |
+| Fig.3 | `fig03_selective_verification.png` | **正文 p8** | 三合一 line chart: e2e / proof / actual fraction (4+8 切片) |
+| Fig.4 | `fig04_attack_handling.png` | **正文 p9** | Grouped bar: 四类攻击 × 两种 verify ratio |
+| Fig.5 | `fig05_visibility_time.png` | **正文 p10** | 三种模式 proof+verify 时间 (含 error bar) |
+| Fig.6 | `fig06_visibility_size.png` | **正文 p10** | 三种模式 proof+witness 大小 (含 error bar) |
+| Fig.7 | `fig07_proof_bound.png` | **正文 p7** | Normal vs fault-injected 对比 (proof-bound 预防) |
+| Fig.8 | `fig08_p4_fidelity.png` | 备份页 A | 切片一致性表格 (全零) |
+| Fig.9 | `fig09_p6_integrity.png` | 备份页 B | 三种完整性机制 proof 时间对比 |
+| Fig.10 | `fig10_cost_reduction.png` | **正文 p8** | 横向柱状: 开销降低百分比汇总 |
+| Fig.11 | `fig11_throughput.png` | 备份页 | 吞吐量 by 切片数 |
 
 ---
 
