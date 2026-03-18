@@ -187,7 +187,7 @@ Input → Master (调度+校验)
 ### 页面标题
 主系统运行情况与阶段性证据
 
-### 图表：使用 `fig01_stage3_latency.png`
+### 图表：使用 `fig01_latency_breakdown.png` + `fig02_per_slice_8s.png` + `fig07_proof_bound.png`
 
 ### 运行结果表格
 
@@ -218,7 +218,7 @@ Input → Master (调度+校验)
 ### 页面标题
 选择性验证的低开销效果
 
-### 图表：使用 `fig03_selective_verification.png` + `fig09_selective_4vs8.png`
+### 图表：使用 `fig03_selective_verification.png` + `fig10_cost_reduction.png`
 
 ### 核心概念说明
 - **请求验证比例** (`verify_ratio`)：用户配置的参数
@@ -254,7 +254,7 @@ Input → Master (调度+校验)
 ### 页面标题
 攻击检测实验结果
 
-### 图表：使用 `fig04_attack_detection.png`
+### 图表：使用 `fig04_attack_handling.png`
 
 ### 攻击模型说明
 - **当前攻击模型：响应层篡改** — Worker 正确计算但返回篡改输出
@@ -403,7 +403,7 @@ Input → Master (调度+校验)
 
 ## 备份页 A：切片逻辑一致性验证 (P4)
 
-### 图表：使用 `fig07_p4_fidelity.png`
+### 图表：使用 `fig08_p4_fidelity.png`
 
 | 切片数 | L1 距离 | L2 距离 | 最大绝对误差 | 相对误差 |
 |:---:|:---:|:---:|:---:|:---:|
@@ -419,7 +419,7 @@ Input → Master (调度+校验)
 
 ## 备份页 B：三类完整性检查机制对比 (P6)
 
-### 图表：使用 `fig08_p6_integrity.png`
+### 图表：使用 `fig09_p6_integrity.png`
 
 | 机制 | 正常 proof 时间 (ms) | 故障下外部完整性 | 故障下电路验证 | 故障下哈希链 |
 |---|---:|:---:|:---:|:---:|
