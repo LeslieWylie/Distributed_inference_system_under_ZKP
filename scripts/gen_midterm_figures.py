@@ -91,7 +91,7 @@ def fig_stage3_prevention():
     colors = ["#70AD47" if p else "#FF0000" for p in prevented]
     ax.bar(x, [1] * len(slices), color=colors, edgecolor="black")
     for i, (s, p) in enumerate(zip(slices, prevented)):
-        label = "预防 ✓" if p else "检测"
+        label = "预防(V)" if p else "检测"
         ax.text(i, 0.5, label, ha="center", va="center", fontsize=12,
                 fontweight="bold", color="white")
 
