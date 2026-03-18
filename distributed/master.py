@@ -430,6 +430,7 @@ def run_pipeline(
                             flat_circuit.append(group)
 
                     # 比较电路输出与 light 阶段声称的输出
+                    max_diff = None
                     if len(flat_circuit) == len(original_output):
                         max_diff = max(
                             abs(float(a) - float(b))
@@ -443,7 +444,7 @@ def run_pipeline(
                     challenge_result["output_cross_check"] = {
                         "circuit_output_sample": str(flat_circuit[:4]),
                         "claimed_output_sample": str(original_output[:4]),
-                        "max_diff": round(max_diff, 6) if cross_check_passed is not None else None,
+                        "max_diff": round(max_diff, 6) if max_diff is not None else None,
                         "passed": cross_check_passed,
                     }
 
