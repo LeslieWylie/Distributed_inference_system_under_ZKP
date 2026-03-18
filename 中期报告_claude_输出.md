@@ -187,7 +187,12 @@ Input → Master (调度+校验)
 ### 页面标题
 主系统运行情况与阶段性证据
 
-### 图表：使用 `fig01_latency_breakdown.png` + `fig02_per_slice_8s.png` + `fig07_proof_bound.png`
+### 图表：主图使用 `fig01_latency_breakdown.png`，补充图使用 `fig07_proof_bound.png`
+
+### 讲解建议
+- 正文主图优先放 `fig01_latency_breakdown.png`，用于说明 2/4/8 切片均可跑通，且主要开销来自 proof generation
+- 如果页面空间允许，可在右下角放 `fig07_proof_bound.png` 小图，说明 proof-bound output 对故障注入的预防效果
+- `fig02_per_slice_8s.png` 更适合备份页，用于回答“8 切片下各 slice 开销是否均衡”这类追问
 
 ### 运行结果表格
 
@@ -219,6 +224,10 @@ Input → Master (调度+校验)
 选择性验证的低开销效果
 
 ### 图表：使用 `fig03_selective_verification.png` + `fig10_cost_reduction.png`
+
+### 讲解建议
+- 正文主图优先放 `fig03_selective_verification.png`，三张子图已经足够完整
+- `fig10_cost_reduction.png` 适合作为同页右下角补充图，突出“约 36% 到 42% 的端到端开销降低”
 
 ### 核心概念说明
 - **请求验证比例** (`verify_ratio`)：用户配置的参数
@@ -256,6 +265,10 @@ Input → Master (调度+校验)
 
 ### 图表：使用 `fig04_attack_handling.png`
 
+### 讲解建议
+- 该图表达的是“在当前攻击模型下，4 类攻击在 2 种验证预算下均被成功处理”，并用 `P` 标注“proof-bound prevention”
+- 这里强调的是**处理成功**而不是泛化到“所有恶意行为均可检测”
+
 ### 攻击模型说明
 - **当前攻击模型：响应层篡改** — Worker 正确计算但返回篡改输出
 - 4 种攻击类型：`tamper`（+999.0）、`skip`（全零）、`random`（随机数）、`replay`（固定值 0.42）
@@ -289,6 +302,10 @@ Input → Master (调度+校验)
 不同可见性模式的开销对比
 
 ### 图表：使用 `fig05_visibility_time.png` + `fig06_visibility_size.png`
+
+### 讲解建议
+- `fig05_visibility_time.png` 是正文主图，展示时间开销和标准差
+- `fig06_visibility_size.png` 建议作为同页下半部分或右侧补充图，突出产物大小变化
 
 ### 模式定义
 
@@ -405,6 +422,9 @@ Input → Master (调度+校验)
 
 ### 图表：使用 `fig08_p4_fidelity.png`
 
+### 页面标题建议
+切片逻辑一致性验证
+
 | 切片数 | L1 距离 | L2 距离 | 最大绝对误差 | 相对误差 |
 |:---:|:---:|:---:|:---:|:---:|
 | 2 | 0.0 | 0.0 | 0.0 | 0.0 |
@@ -415,20 +435,26 @@ Input → Master (调度+校验)
 > 结论：PyTorch 层级切分为 bit-exact，不引入数值误差。
 > 注：此为 PyTorch 切片一致性验证，非 ONNXRuntime/EZKL 量化路径保真度。
 
+### 使用建议
+- 该图适合放在备份页，不建议占用正文主图位置
+- 因为所有值均为 0，表格形式比柱状图更合适，信息表达是正确的
+- 答辩时若老师追问“切片本身是否引入误差”，再翻到这一页即可
+
 ---
 
 ## 备份页 B：三类完整性检查机制对比 (P6)
 
 ### 图表：使用 `fig09_p6_integrity.png`
 
-| 机制 | 正常 proof 时间 (ms) | 故障下外部完整性 | 故障下电路验证 | 故障下哈希链 |
-|---|---:|:---:|:---:|:---:|
-| 外部哈希链 (SHA-256, all_public) | 6,526 | ✅ | ✅ | ✅ |
-| 电路内 Poseidon (hashed) | 11,138 | ✅ | ✅ | ✅ |
-| 完全隐私 (private) | 6,723 | ✅ | ✅ | ✅ |
+| 机制 | 正常 proof 时间 (ms) | 相对 all_public 倍数 | 说明 |
+|---|---:|:---:|---|
+| 外部哈希链 (SHA-256, all_public) | 6,526 | 1.00× | 基准模式 |
+| 电路内 Poseidon (hashed) | 11,138 | 1.71× | 额外 Poseidon 约束导致开销上升 |
+| 完全隐私 (private) | 6,723 | 1.03× | 与基准接近 |
 
-> 由于 proof-bound output 已在 Worker 侧预防篡改，故障注入后所有检查均通过。
-> 不应表述为"完整 ZK linking 实证"，而应定位为"三种完整性检查机制的开销与行为对比"。
+> 当前图 `fig09_p6_integrity.png` 仅展示**正常模式下三种机制的 proof 时间对比**。
+> 不应表述为"完整 ZK linking 实证"，而应定位为"三种完整性检查机制的开销对比"。
+> 若老师追问故障下各检查是否通过，可口头补充：由于 proof-bound output 已在源头预防篡改，故障注入场景下 external integrity / circuit verified / chain consistency 均为通过。
 
 ---
 
@@ -450,15 +476,15 @@ Input → Master (调度+校验)
 | 图 | 文件 | PPT 位置 | 说明 |
 |---|---|:---:|---|
 | Fig.1 | `fig01_latency_breakdown.png` | **正文 p7** | Stacked bar: proof/verify/IO 开销分解 (2/4/8 切片) |
-| Fig.2 | `fig02_per_slice_8s.png` | **正文 p7** | 逐切片 proof+verify 时间 (8 切片) |
+| Fig.2 | `fig02_per_slice_8s.png` | 备份页 | 逐切片 proof+verify 时间 (8 切片) |
 | Fig.3 | `fig03_selective_verification.png` | **正文 p8** | 三合一 line chart: e2e / proof / actual fraction (4+8 切片) |
 | Fig.4 | `fig04_attack_handling.png` | **正文 p9** | Grouped bar: 四类攻击 × 两种 verify ratio |
 | Fig.5 | `fig05_visibility_time.png` | **正文 p10** | 三种模式 proof+verify 时间 (含 error bar) |
 | Fig.6 | `fig06_visibility_size.png` | **正文 p10** | 三种模式 proof+witness 大小 (含 error bar) |
-| Fig.7 | `fig07_proof_bound.png` | **正文 p7** | Normal vs fault-injected 对比 (proof-bound 预防) |
+| Fig.7 | `fig07_proof_bound.png` | 正文 p7 右下角 / 备份页 | Normal vs fault-injected 对比 (proof-bound 预防) |
 | Fig.8 | `fig08_p4_fidelity.png` | 备份页 A | 切片一致性表格 (全零) |
-| Fig.9 | `fig09_p6_integrity.png` | 备份页 B | 三种完整性机制 proof 时间对比 |
-| Fig.10 | `fig10_cost_reduction.png` | **正文 p8** | 横向柱状: 开销降低百分比汇总 |
+| Fig.9 | `fig09_p6_integrity.png` | 备份页 B | 三种完整性机制正常模式 proof 时间对比 |
+| Fig.10 | `fig10_cost_reduction.png` | 正文 p8 右下角 / 备份页 | 横向柱状: 开销降低百分比汇总 |
 | Fig.11 | `fig11_throughput.png` | 备份页 | 吞吐量 by 切片数 |
 
 ---
