@@ -1,278 +1,284 @@
 [
   {
-    "e2e_latency_ms": 17960.76,
-    "total_proof_gen_ms": 17426.02,
-    "total_verify_ms": 261.09,
-    "avg_proof_gen_ms": 8713.01,
-    "avg_verify_ms": 130.55,
-    "peak_rss_mb": 259.59,
+    "e2e_latency_ms": 2768.56,
+    "total_proof_gen_ms": 2520.17,
+    "total_verify_ms": 164.69,
+    "avg_proof_gen_ms": 1260.09,
+    "avg_verify_ms": 82.34,
+    "peak_rss_mb": 260.61,
     "hash_chain_ok": true,
-    "detection_accuracy": 1.0,
+    "fault_detected": null,
     "fault_at": null,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_only",
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 9441.54,
-        "verify_ms": 177.53,
-        "peak_rss_mb": 259.59
+        "proof_gen_ms": 1170.7,
+        "verify_ms": 85.73,
+        "peak_rss_mb": 258.16
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 7984.48,
-        "verify_ms": 83.56,
-        "peak_rss_mb": 258.52
+        "proof_gen_ms": 1349.47,
+        "verify_ms": 78.96,
+        "peak_rss_mb": 260.61
       }
     ],
     "experiment": "2s_normal",
     "num_slices": 2,
-    "throughput_req_per_sec": 0.2895
+    "throughput_req_per_sec": 0.3066
   },
   {
-    "e2e_latency_ms": 5377.98,
-    "total_proof_gen_ms": 5142.1,
-    "total_verify_ms": 80.05,
-    "avg_proof_gen_ms": 2571.05,
-    "avg_verify_ms": 40.02,
-    "peak_rss_mb": 261.84,
+    "e2e_latency_ms": 2816.2,
+    "total_proof_gen_ms": 2629.91,
+    "total_verify_ms": 137.75,
+    "avg_proof_gen_ms": 1314.95,
+    "avg_verify_ms": 68.88,
+    "peak_rss_mb": 261.95,
     "hash_chain_ok": false,
-    "detection_accuracy": 1.0,
+    "fault_detected": true,
     "fault_at": 2,
     "malicious_detected": [
       2
     ],
+    "evaluation_scope": "simplified_L1_L3_only",
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 3762.57,
-        "verify_ms": 42.36,
-        "peak_rss_mb": 261.84
+        "proof_gen_ms": 1410.17,
+        "verify_ms": 69.63,
+        "peak_rss_mb": 259.54
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1379.53,
-        "verify_ms": 37.69,
-        "peak_rss_mb": 261.77
+        "proof_gen_ms": 1219.74,
+        "verify_ms": 68.12,
+        "peak_rss_mb": 261.95
       }
     ],
     "experiment": "2s_fault_last",
     "num_slices": 2,
-    "throughput_req_per_sec": 0.2895
+    "throughput_req_per_sec": 0.3066
   },
   {
-    "e2e_latency_ms": 7321.53,
-    "total_proof_gen_ms": 6824.84,
-    "total_verify_ms": 351.7,
-    "avg_proof_gen_ms": 1706.21,
-    "avg_verify_ms": 87.92,
-    "peak_rss_mb": 261.03,
+    "e2e_latency_ms": 5903.17,
+    "total_proof_gen_ms": 5300.72,
+    "total_verify_ms": 323.6,
+    "avg_proof_gen_ms": 1325.18,
+    "avg_verify_ms": 80.9,
+    "peak_rss_mb": 263.5,
     "hash_chain_ok": true,
-    "detection_accuracy": 1.0,
+    "fault_detected": null,
     "fault_at": null,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_only",
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1949.05,
-        "verify_ms": 76.98,
-        "peak_rss_mb": 259.74
+        "proof_gen_ms": 1423.48,
+        "verify_ms": 106.57,
+        "peak_rss_mb": 260.62
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1526.99,
-        "verify_ms": 69.37,
-        "peak_rss_mb": 261.03
+        "proof_gen_ms": 1303.73,
+        "verify_ms": 70.08,
+        "peak_rss_mb": 260.2
       },
       {
         "slice_id": 3,
-        "proof_gen_ms": 1845.83,
-        "verify_ms": 173.53,
-        "peak_rss_mb": 260.5
+        "proof_gen_ms": 1293.95,
+        "verify_ms": 69.07,
+        "peak_rss_mb": 263.5
       },
       {
         "slice_id": 4,
-        "proof_gen_ms": 1502.97,
-        "verify_ms": 31.82,
-        "peak_rss_mb": 259.11
+        "proof_gen_ms": 1279.56,
+        "verify_ms": 77.88,
+        "peak_rss_mb": 262.08
       }
     ],
     "experiment": "4s_normal",
     "num_slices": 4,
-    "throughput_req_per_sec": 0.132
+    "throughput_req_per_sec": 0.1736
   },
   {
-    "e2e_latency_ms": 7234.41,
-    "total_proof_gen_ms": 6902.64,
-    "total_verify_ms": 163.08,
-    "avg_proof_gen_ms": 1725.66,
-    "avg_verify_ms": 40.77,
-    "peak_rss_mb": 261.69,
+    "e2e_latency_ms": 5469.71,
+    "total_proof_gen_ms": 5098.34,
+    "total_verify_ms": 237.79,
+    "avg_proof_gen_ms": 1274.59,
+    "avg_verify_ms": 59.45,
+    "peak_rss_mb": 264.84,
     "hash_chain_ok": false,
-    "detection_accuracy": 1.0,
+    "fault_detected": true,
     "fault_at": 4,
     "malicious_detected": [
       4
     ],
+    "evaluation_scope": "simplified_L1_L3_only",
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1797.03,
-        "verify_ms": 30.49,
-        "peak_rss_mb": 261.29
+        "proof_gen_ms": 1204.23,
+        "verify_ms": 64.58,
+        "peak_rss_mb": 261.71
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1504.9,
-        "verify_ms": 24.55,
-        "peak_rss_mb": 261.69
+        "proof_gen_ms": 1200.65,
+        "verify_ms": 48.38,
+        "peak_rss_mb": 262.55
       },
       {
         "slice_id": 3,
-        "proof_gen_ms": 1714.74,
-        "verify_ms": 70.95,
-        "peak_rss_mb": 261.37
+        "proof_gen_ms": 1262.54,
+        "verify_ms": 53.32,
+        "peak_rss_mb": 264.84
       },
       {
         "slice_id": 4,
-        "proof_gen_ms": 1885.97,
-        "verify_ms": 37.09,
-        "peak_rss_mb": 261.12
+        "proof_gen_ms": 1430.92,
+        "verify_ms": 71.51,
+        "peak_rss_mb": 263.02
       }
     ],
     "experiment": "4s_fault_last",
     "num_slices": 4,
-    "throughput_req_per_sec": 0.132
+    "throughput_req_per_sec": 0.1736
   },
   {
-    "e2e_latency_ms": 14040.79,
-    "total_proof_gen_ms": 13456.62,
-    "total_verify_ms": 358.56,
-    "avg_proof_gen_ms": 1682.08,
-    "avg_verify_ms": 44.82,
-    "peak_rss_mb": 263.73,
+    "e2e_latency_ms": 10941.87,
+    "total_proof_gen_ms": 9747.26,
+    "total_verify_ms": 650.76,
+    "avg_proof_gen_ms": 1218.41,
+    "avg_verify_ms": 81.34,
+    "peak_rss_mb": 263.91,
     "hash_chain_ok": true,
-    "detection_accuracy": 1.0,
+    "fault_detected": null,
     "fault_at": null,
     "malicious_detected": [],
+    "evaluation_scope": "simplified_L1_L3_only",
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1695.59,
-        "verify_ms": 74.53,
-        "peak_rss_mb": 258.2
+        "proof_gen_ms": 1081.62,
+        "verify_ms": 89.64,
+        "peak_rss_mb": 261.3
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1856.34,
-        "verify_ms": 54.78,
-        "peak_rss_mb": 258.91
+        "proof_gen_ms": 1278.88,
+        "verify_ms": 75.57,
+        "peak_rss_mb": 259.78
       },
       {
         "slice_id": 3,
-        "proof_gen_ms": 1586.51,
-        "verify_ms": 31.79,
-        "peak_rss_mb": 260.02
+        "proof_gen_ms": 1263.98,
+        "verify_ms": 85.51,
+        "peak_rss_mb": 258.11
       },
       {
         "slice_id": 4,
-        "proof_gen_ms": 1861.36,
-        "verify_ms": 30.97,
-        "peak_rss_mb": 258.22
+        "proof_gen_ms": 1214.11,
+        "verify_ms": 74.55,
+        "peak_rss_mb": 258.85
       },
       {
         "slice_id": 5,
-        "proof_gen_ms": 1628.67,
-        "verify_ms": 67.47,
-        "peak_rss_mb": 263.73
+        "proof_gen_ms": 1242.9,
+        "verify_ms": 74.03,
+        "peak_rss_mb": 262.93
       },
       {
         "slice_id": 6,
-        "proof_gen_ms": 1474.06,
-        "verify_ms": 26.2,
-        "peak_rss_mb": 261.94
+        "proof_gen_ms": 1218.77,
+        "verify_ms": 91.32,
+        "peak_rss_mb": 262.72
       },
       {
         "slice_id": 7,
-        "proof_gen_ms": 1554.36,
-        "verify_ms": 43.26,
-        "peak_rss_mb": 262.98
+        "proof_gen_ms": 1195.16,
+        "verify_ms": 85.92,
+        "peak_rss_mb": 263.91
       },
       {
         "slice_id": 8,
-        "proof_gen_ms": 1799.73,
-        "verify_ms": 29.56,
-        "peak_rss_mb": 260.92
+        "proof_gen_ms": 1251.84,
+        "verify_ms": 74.22,
+        "peak_rss_mb": 263.84
       }
     ],
     "experiment": "8s_normal",
     "num_slices": 8,
-    "throughput_req_per_sec": 0.0736
+    "throughput_req_per_sec": 0.0689
   },
   {
-    "e2e_latency_ms": 12336.93,
-    "total_proof_gen_ms": 11826.7,
-    "total_verify_ms": 323.9,
-    "avg_proof_gen_ms": 1478.34,
-    "avg_verify_ms": 40.49,
-    "peak_rss_mb": 265.05,
+    "e2e_latency_ms": 10673.15,
+    "total_proof_gen_ms": 10052.68,
+    "total_verify_ms": 400.09,
+    "avg_proof_gen_ms": 1256.59,
+    "avg_verify_ms": 50.01,
+    "peak_rss_mb": 264.57,
     "hash_chain_ok": false,
-    "detection_accuracy": 1.0,
+    "fault_detected": true,
     "fault_at": 8,
     "malicious_detected": [
       8
     ],
+    "evaluation_scope": "simplified_L1_L3_only",
     "slices": [
       {
         "slice_id": 1,
-        "proof_gen_ms": 1461.29,
-        "verify_ms": 29.11,
-        "peak_rss_mb": 259.76
+        "proof_gen_ms": 1226.44,
+        "verify_ms": 56.2,
+        "peak_rss_mb": 262.38
       },
       {
         "slice_id": 2,
-        "proof_gen_ms": 1316.98,
-        "verify_ms": 48.88,
-        "peak_rss_mb": 261.49
+        "proof_gen_ms": 1230.84,
+        "verify_ms": 45.04,
+        "peak_rss_mb": 261.78
       },
       {
         "slice_id": 3,
-        "proof_gen_ms": 1570.2,
-        "verify_ms": 33.34,
-        "peak_rss_mb": 261.31
+        "proof_gen_ms": 1271.09,
+        "verify_ms": 58.52,
+        "peak_rss_mb": 259.84
       },
       {
         "slice_id": 4,
-        "proof_gen_ms": 1395.89,
-        "verify_ms": 34.06,
-        "peak_rss_mb": 260.12
+        "proof_gen_ms": 1201.62,
+        "verify_ms": 51.4,
+        "peak_rss_mb": 260.53
       },
       {
         "slice_id": 5,
-        "proof_gen_ms": 1467.64,
-        "verify_ms": 78.93,
-        "peak_rss_mb": 264.77
+        "proof_gen_ms": 1260.64,
+        "verify_ms": 46.86,
+        "peak_rss_mb": 264.48
       },
       {
         "slice_id": 6,
-        "proof_gen_ms": 1480.38,
-        "verify_ms": 35.17,
-        "peak_rss_mb": 263.29
+        "proof_gen_ms": 1375.93,
+        "verify_ms": 45.83,
+        "peak_rss_mb": 263.93
       },
       {
         "slice_id": 7,
-        "proof_gen_ms": 1476.96,
-        "verify_ms": 36.39,
-        "peak_rss_mb": 265.05
+        "proof_gen_ms": 1254.93,
+        "verify_ms": 47.76,
+        "peak_rss_mb": 264.57
       },
       {
         "slice_id": 8,
-        "proof_gen_ms": 1657.36,
-        "verify_ms": 28.02,
-        "peak_rss_mb": 264.75
+        "proof_gen_ms": 1231.19,
+        "verify_ms": 48.48,
+        "peak_rss_mb": 264.42
       }
     ],
     "experiment": "8s_fault_last",
     "num_slices": 8,
-    "throughput_req_per_sec": 0.0736
+    "throughput_req_per_sec": 0.0689
   }
 ]
