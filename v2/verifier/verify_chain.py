@@ -43,6 +43,7 @@ def verify_chain(
     req_id: str,
     proof_jobs: list[ProofJob],
     artifacts: list[SliceArtifact],
+    initial_input: list[float] | None = None,
     initial_input_commit: str | None = None,
     provisional_output: list[float] | None = None,
 ) -> ChainVerifyResult:
@@ -128,6 +129,37 @@ def verify_chain(
     num_links = max(len(single_results) - 1, 1)
     LINK_EPSILON = BASE_EPSILON / num_links
     accumulated_diff = 0.0
+
+    # Step 2a: P0-3 FIX — 首端输入绑定
+    #   验证第 1 片 proof 的 rescaled_inputs 与请求的初始输入一致
+    #   防止 Worker 使用不同输入的合法 proof 冒充当前请求
+    if initial_input and single_results:
+        first_in_str = single_results[0].input_commit_from_proof
+        if first_in_str is not None:
+            try:
+                first_proof_inputs = _flatten_nested(json.loads(first_in_str))
+                if len(first_proof_inputs) == len(initial_input):
+                    first_max_diff = max(
+                        abs(float(a) - float(b))
+                        for a, b in zip(first_proof_inputs, initial_input)
+                    )
+                    if first_max_diff > LINK_EPSILON:
+                        link_failures.append({
+                            "edge": ["initial_input", proof_jobs[0].slice_id],
+                            "reason": f"first-input binding failure: "
+                                      f"proof input != request input "
+                                      f"(max_diff={first_max_diff:.6f})",
+                        })
+                else:
+                    link_failures.append({
+                        "edge": ["initial_input", proof_jobs[0].slice_id],
+                        "reason": f"first-input dimension mismatch: "
+                                  f"{len(first_proof_inputs)} vs {len(initial_input)}",
+                    })
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+
+    # Step 2b: 相邻切片 linking
 
     for i in range(len(single_results) - 1):
         curr = single_results[i]

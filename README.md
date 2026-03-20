@@ -5,13 +5,21 @@
 
 ## 系统定位
 
-本项目研究如何在分布式切片推理中实现端到端可验证性。系统将深度学习模型按层切片分配给多个 Worker，每个切片最终都生成 EZKL ZKP 证明，由独立 Verifier 通过相邻切片输入/输出公开实例的一致性检查（commitment linking）和终端绑定完成全链路认证。
+本项目研究如何在分布式切片推理中实现端到端可验证性。系统将深度学习模型按层切片分配给多个 Worker，每个切片最终都生成 EZKL ZKP 证明，由独立 Verifier 通过相邻切片 proof 公开实例的近似一致性检查（public-instance linking）和终端绑定完成全链路认证。
 
 **核心思想：所有切片最终都被证明，证明不阻塞执行。**
 
+系统支持两种运行模式：
+- **分布式模式**：多个 FastAPI Execution Worker 进程 + Master Coordinator (HTTP 通信)
+- **本地模式**：单进程函数调用级编排（快速原型验证）
+
 系统区分两类输出：
 - **Provisional Output**：在线推理完成后立即返回（~10ms），未经认证
-- **Certified Output**：全部 proof 验证通过 + commitment chain 闭合后，升级为认证结果
+- **Certified Output**：全部 proof 验证通过 + public-instance linking 闭合后，升级为认证结果
+
+> **注**：当前链路验证使用 proof-bound public-instance linking（近似浮点比较），
+> 非精确密码学 commitment chain。精确 commitment chain 需要 `polycommit` 模式升级（见 future work）。
+> 当前实现优先解决推理完整性验证；隐私保护模式（hashed/private）在 v1 实验中已做技术探索。
 
 ## 快速开始
 

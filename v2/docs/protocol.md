@@ -129,10 +129,36 @@ within quantization precision of the circuit semantics.
 
 **What this does NOT guarantee**:
 - Fidelity to the original floating-point model (separate empirical measurement)
-- Privacy of intermediate activations (public visibility mode)
+- Privacy of intermediate activations (current implementation uses public visibility;
+  privacy mode exploration documented in v1 experiments)
 - Availability (malicious Worker can refuse to compute)
+- Exact cryptographic commitment chain (current: public-instance linking;
+  future: polycommit upgrade)
 
-## 8. Comparison with NanoZK
+## 8. Linking Level Classification
+
+| Level | Description | Status |
+|---|---|---|
+| **L1: Public-instance linking** | Compare `rescaled_outputs[i]` ≈ `rescaled_inputs[i+1]` with dynamic ε budget | **Current implementation** |
+| **L2: Cryptographic commitment chain** | `C_out_i == C_in_{i+1}` via Poseidon/polycommit exact equality | **Future upgrade** (polycommit + swap_proof_commitments) |
+
+Current system implements **Level 1**. Level 2 requires EZKL `polycommit` visibility
+mode with explicit scale alignment across slices.
+
+## 9. Architecture: Distributed Runtime
+
+The system supports two runtime modes:
+
+### Local mode (v2/execution/pipeline.py)
+Single-process function-call orchestration. Used for fast prototyping and unit testing.
+
+### Distributed mode (v2/services/)
+True multi-process architecture with HTTP communication:
+- **Execution Workers** (`execution_worker.py`): FastAPI services, one per slice
+- **Master Coordinator** (`master_coordinator.py`): HTTP-based orchestration + verification
+- Workers are untrusted; Master/Verifier is the trust anchor
+
+## 10. Comparison with NanoZK
 
 | Aspect | NanoZK | This System |
 |---|---|---|

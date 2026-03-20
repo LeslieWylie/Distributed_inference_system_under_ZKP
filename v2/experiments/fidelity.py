@@ -108,11 +108,54 @@ def run_fidelity_experiments(num_slices: int = 4, num_samples: int = 5):
             "mean_abs_error": float(np.mean(f3_diff)),
         })
 
-        # F2: 逐切片 proof-bound rescaled_outputs vs full model 对应层输出
-        #     这里用最终 proof 链的 rescaled_outputs 作为电路输出
-        slice_metrics = result.get("metrics", {}).get("per_slice", [])
+        # ── F2: 逐切片 circuit fidelity ──
+        #   对每片: 从 proof 的 rescaled_outputs 中提取电路输出
+        #   与对应的 PyTorch 切片浮点输出比较
+        #   这才是真正的 per-slice quantization fidelity
+        with torch.no_grad():
+            float_x = torch.tensor([inp])
+            per_slice_f2 = []
+            for j, sm in enumerate(slice_models):
+                float_out_j = sm(float_x).numpy().flatten()
+
+                # 从 pipeline result 中提取该切片的 proof rescaled_outputs
+                proof_jobs = result.get("_proof_jobs", [])
+                circuit_out_j = None
+                if j < len(proof_jobs) and proof_jobs[j].proof_data:
+                    ppi = proof_jobs[j].proof_data.get("pretty_public_inputs", {})
+                    ro = ppi.get("rescaled_outputs", [])
+                    if ro:
+                        flat = []
+                        for g in ro:
+                            if isinstance(g, list):
+                                for v in g:
+                                    flat.append(float(v))
+                            else:
+                                flat.append(float(g))
+                        if flat:
+                            circuit_out_j = np.array(flat)
+
+                if circuit_out_j is not None and len(circuit_out_j) == len(float_out_j):
+                    diff_j = np.abs(float_out_j - circuit_out_j)
+                    per_slice_f2.append({
+                        "slice_id": j + 1,
+                        "max_abs_error": float(np.max(diff_j)),
+                        "mean_abs_error": float(np.mean(diff_j)),
+                        "l1_distance": float(np.sum(diff_j)),
+                    })
+                else:
+                    per_slice_f2.append({
+                        "slice_id": j + 1,
+                        "max_abs_error": None,
+                        "mean_abs_error": None,
+                        "note": "rescaled_outputs unavailable",
+                    })
+
+                float_x = sm(float_x)  # cascade
+
         f2_results.append({
             "sample": i,
+            "per_slice": per_slice_f2,
             "e2e_circuit_vs_float": {
                 "l1_distance": float(np.sum(f3_diff)),
                 "max_abs_error": float(np.max(f3_diff)),

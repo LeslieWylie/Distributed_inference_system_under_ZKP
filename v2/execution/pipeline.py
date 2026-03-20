@@ -170,8 +170,28 @@ def run_certified_pipeline(
         print(f"  Slice {sid}: exec={exec_ms:.0f}ms prove={prove_ms:.0f}ms"
               + (" [FAULT]" if fault_injected else ""))
 
-        # ── 5. 下一片输入 = 本片输出 ──
-        current_input = output_tensor
+        # ── 5. P0-6 FIX: 下一片输入 = proof-bound 输出 ──
+        #   Phase A 的正确语义：每片同步认证后，才把 proof 绑定的输出传给下一片。
+        #   如果 Worker 篡改了 output_tensor，proof 里的 rescaled_outputs 不同，
+        #   下一片会使用 proof 绑定的正确输出，篡改数据不会传播。
+        #   这才是真正的 "每片先认证再传" 语义。
+        proof_ppi = (proof_result.get("proof_data") or {}).get(
+            "pretty_public_inputs", {})
+        rescaled = proof_ppi.get("rescaled_outputs", [])
+        if rescaled:
+            proof_output = []
+            for group in rescaled:
+                if isinstance(group, list):
+                    for v in group:
+                        proof_output.append(float(v))
+                else:
+                    proof_output.append(float(group))
+            if proof_output:
+                current_input = proof_output
+            else:
+                current_input = output_tensor
+        else:
+            current_input = output_tensor
 
     exec_total_ms = (time.perf_counter() - pipeline_start) * 1000
 
@@ -183,6 +203,7 @@ def run_certified_pipeline(
 
     chain_result = verify_chain(
         req_id, proof_jobs, artifacts,
+        initial_input=initial_input,
         provisional_output=current_input,
     )
 
@@ -229,4 +250,5 @@ def run_certified_pipeline(
         "num_slices": num_slices,
         "fault_at": fault_at,
         "fault_type": fault_type if fault_at else None,
+        "_proof_jobs": proof_jobs,  # exposed for F2 fidelity analysis
     }
