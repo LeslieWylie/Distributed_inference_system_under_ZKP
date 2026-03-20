@@ -1,0 +1,469 @@
+[
+  {
+    "experiment": "normal",
+    "fault_at": null,
+    "fault_type": "none",
+    "expected_status": "certified",
+    "actual_status": "certified",
+    "test_passed": true,
+    "metrics": {
+      "total_ms": 4415.67,
+      "execution_ms": 4344.5,
+      "total_proof_gen_ms": 4186.45,
+      "verification_ms": 71.1,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 10.23,
+          "prove_ms": 991.41,
+          "total_ms": 1033.86,
+          "proof_size_bytes": 19592,
+          "peak_rss_mb": 75.24,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 2.48,
+          "prove_ms": 1110.58,
+          "total_ms": 1141.47,
+          "proof_size_bytes": 19501,
+          "peak_rss_mb": 76.45,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 2.02,
+          "prove_ms": 1045.99,
+          "total_ms": 1090.88,
+          "proof_size_bytes": 19609,
+          "peak_rss_mb": 76.97,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 2.36,
+          "prove_ms": 1038.47,
+          "total_ms": 1077.81,
+          "proof_size_bytes": 18983,
+          "peak_rss_mb": 78.87,
+          "fault_injected": false
+        }
+      ]
+    },
+    "certificate": {
+      "status": "certified",
+      "all_single_proofs_verified": true,
+      "all_links_verified": true,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T13:06:02.638684+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [],
+        "proof_failures": [],
+        "verify_ms_total": 71.1
+      }
+    }
+  },
+  {
+    "experiment": "tamper_last",
+    "fault_at": 4,
+    "fault_type": "tamper",
+    "expected_status": "invalid",
+    "actual_status": "invalid",
+    "test_passed": true,
+    "metrics": {
+      "total_ms": 5578.86,
+      "execution_ms": 5501.64,
+      "total_proof_gen_ms": 5263.91,
+      "verification_ms": 77.11,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.17,
+          "prove_ms": 1254.94,
+          "total_ms": 1291.24,
+          "proof_size_bytes": 19588,
+          "peak_rss_mb": 81.1,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 6.62,
+          "prove_ms": 1396.72,
+          "total_ms": 1488.77,
+          "proof_size_bytes": 19550,
+          "peak_rss_mb": 82.12,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 5.02,
+          "prove_ms": 1302.55,
+          "total_ms": 1371.83,
+          "proof_size_bytes": 19567,
+          "peak_rss_mb": 82.53,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 2.9,
+          "prove_ms": 1309.7,
+          "total_ms": 1349.28,
+          "proof_size_bytes": 18978,
+          "peak_rss_mb": 83.51,
+          "fault_injected": true
+        }
+      ]
+    },
+    "certificate": {
+      "status": "invalid",
+      "all_single_proofs_verified": true,
+      "all_links_verified": false,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T13:06:08.219187+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [
+          {
+            "edge": [
+              4,
+              "terminal"
+            ],
+            "reason": "terminal binding failure: proof output != provisional output (max_diff=998.999953)"
+          }
+        ],
+        "proof_failures": [],
+        "verify_ms_total": 77.11
+      }
+    }
+  },
+  {
+    "experiment": "tamper_mid",
+    "fault_at": 2,
+    "fault_type": "tamper",
+    "expected_status": "invalid",
+    "actual_status": "invalid",
+    "test_passed": true,
+    "metrics": {
+      "total_ms": 5700.11,
+      "execution_ms": 5630.37,
+      "total_proof_gen_ms": 5308.54,
+      "verification_ms": 69.67,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 3.08,
+          "prove_ms": 1293.07,
+          "total_ms": 1371.63,
+          "proof_size_bytes": 19565,
+          "peak_rss_mb": 87.94,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 6.82,
+          "prove_ms": 1355.79,
+          "total_ms": 1443.21,
+          "proof_size_bytes": 19503,
+          "peak_rss_mb": 83.63,
+          "fault_injected": true
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 4.18,
+          "prove_ms": 1342.71,
+          "total_ms": 1399.46,
+          "proof_size_bytes": 19506,
+          "peak_rss_mb": 83.48,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 12.49,
+          "prove_ms": 1316.97,
+          "total_ms": 1415.45,
+          "proof_size_bytes": 19030,
+          "peak_rss_mb": 83.44,
+          "fault_injected": false
+        }
+      ]
+    },
+    "certificate": {
+      "status": "invalid",
+      "all_single_proofs_verified": true,
+      "all_links_verified": false,
+      "final_output_commit": "[[\"-0.4149169921875\", \"-1.054931640625\", \"10.619873046875\", \"0.61962890625\"]]",
+      "timestamp": "2026-03-20T13:06:13.923703+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [
+          {
+            "edge": [
+              2,
+              3
+            ],
+            "reason": "rescaled value mismatch: max_diff=999.000000"
+          },
+          {
+            "edge": [
+              3,
+              4
+            ],
+            "reason": "rescaled value mismatch: max_diff=0.018066"
+          }
+        ],
+        "proof_failures": [],
+        "verify_ms_total": 69.67
+      }
+    }
+  },
+  {
+    "experiment": "skip",
+    "fault_at": 4,
+    "fault_type": "skip",
+    "expected_status": "invalid",
+    "actual_status": "invalid",
+    "test_passed": true,
+    "metrics": {
+      "total_ms": 6137.94,
+      "execution_ms": 6070.14,
+      "total_proof_gen_ms": 5659.57,
+      "verification_ms": 67.72,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.81,
+          "prove_ms": 1390.48,
+          "total_ms": 1471.32,
+          "proof_size_bytes": 19609,
+          "peak_rss_mb": 82.8,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 8.33,
+          "prove_ms": 1449.23,
+          "total_ms": 1525.07,
+          "proof_size_bytes": 19519,
+          "peak_rss_mb": 83.18,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 7.03,
+          "prove_ms": 1499.01,
+          "total_ms": 1586.63,
+          "proof_size_bytes": 19559,
+          "peak_rss_mb": 84.29,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 5.02,
+          "prove_ms": 1320.85,
+          "total_ms": 1486.46,
+          "proof_size_bytes": 18984,
+          "peak_rss_mb": 82.48,
+          "fault_injected": true
+        }
+      ]
+    },
+    "certificate": {
+      "status": "invalid",
+      "all_single_proofs_verified": true,
+      "all_links_verified": false,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T13:06:20.064576+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [
+          {
+            "edge": [
+              4,
+              "terminal"
+            ],
+            "reason": "terminal binding failure: proof output != provisional output (max_diff=0.366455)"
+          }
+        ],
+        "proof_failures": [],
+        "verify_ms_total": 67.72
+      }
+    }
+  },
+  {
+    "experiment": "random",
+    "fault_at": 4,
+    "fault_type": "random",
+    "expected_status": "invalid",
+    "actual_status": "invalid",
+    "test_passed": true,
+    "metrics": {
+      "total_ms": 6437.28,
+      "execution_ms": 6349.29,
+      "total_proof_gen_ms": 5986.14,
+      "verification_ms": 87.9,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.78,
+          "prove_ms": 1487.1,
+          "total_ms": 1553.17,
+          "proof_size_bytes": 19596,
+          "peak_rss_mb": 89.57,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 15.86,
+          "prove_ms": 1469.04,
+          "total_ms": 1576.65,
+          "proof_size_bytes": 19508,
+          "peak_rss_mb": 83.86,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 30.67,
+          "prove_ms": 1430.34,
+          "total_ms": 1538.83,
+          "proof_size_bytes": 19535,
+          "peak_rss_mb": 84.8,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 6.59,
+          "prove_ms": 1599.66,
+          "total_ms": 1679.5,
+          "proof_size_bytes": 18962,
+          "peak_rss_mb": 85.46,
+          "fault_injected": true
+        }
+      ]
+    },
+    "certificate": {
+      "status": "invalid",
+      "all_single_proofs_verified": true,
+      "all_links_verified": false,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T13:06:26.503974+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [
+          {
+            "edge": [
+              4,
+              "terminal"
+            ],
+            "reason": "terminal binding failure: proof output != provisional output (max_diff=5.025572)"
+          }
+        ],
+        "proof_failures": [],
+        "verify_ms_total": 87.9
+      }
+    }
+  },
+  {
+    "experiment": "replay",
+    "fault_at": 4,
+    "fault_type": "replay",
+    "expected_status": "invalid",
+    "actual_status": "invalid",
+    "test_passed": true,
+    "metrics": {
+      "total_ms": 6766.09,
+      "execution_ms": 6681.33,
+      "total_proof_gen_ms": 6117.27,
+      "verification_ms": 84.7,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.51,
+          "prove_ms": 1548.0,
+          "total_ms": 1757.94,
+          "proof_size_bytes": 19588,
+          "peak_rss_mb": 82.34,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 39.82,
+          "prove_ms": 1479.45,
+          "total_ms": 1588.45,
+          "proof_size_bytes": 19561,
+          "peak_rss_mb": 83.43,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 9.74,
+          "prove_ms": 1445.27,
+          "total_ms": 1566.03,
+          "proof_size_bytes": 19552,
+          "peak_rss_mb": 83.98,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 4.87,
+          "prove_ms": 1644.55,
+          "total_ms": 1767.92,
+          "proof_size_bytes": 18951,
+          "peak_rss_mb": 84.57,
+          "fault_injected": true
+        }
+      ]
+    },
+    "certificate": {
+      "status": "invalid",
+      "all_single_proofs_verified": true,
+      "all_links_verified": false,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T13:06:33.273610+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [
+          {
+            "edge": [
+              4,
+              "terminal"
+            ],
+            "reason": "terminal binding failure: proof output != provisional output (max_diff=0.786455)"
+          }
+        ],
+        "proof_failures": [],
+        "verify_ms_total": 84.7
+      }
+    }
+  }
+]
