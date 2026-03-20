@@ -1,0 +1,422 @@
+[
+  {
+    "experiment": "normal",
+    "fault_at": null,
+    "fault_type": "none",
+    "expected_status": "certified",
+    "actual_status": "certified",
+    "test_passed": true,
+    "metrics": {
+      "total_ms": 5146.96,
+      "execution_ms": 4819.01,
+      "total_proof_gen_ms": 4415.45,
+      "verification_ms": 327.85,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 52.4,
+          "prove_ms": 1129.01,
+          "total_ms": 1221.56,
+          "proof_size_bytes": 19567,
+          "peak_rss_mb": 76.76,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 32.71,
+          "prove_ms": 1122.56,
+          "total_ms": 1209.29,
+          "proof_size_bytes": 19533,
+          "peak_rss_mb": 78.56,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 32.58,
+          "prove_ms": 1073.51,
+          "total_ms": 1183.71,
+          "proof_size_bytes": 19520,
+          "peak_rss_mb": 79.13,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 62.7,
+          "prove_ms": 1090.37,
+          "total_ms": 1203.89,
+          "proof_size_bytes": 18993,
+          "peak_rss_mb": 79.7,
+          "fault_injected": false
+        }
+      ]
+    },
+    "certificate": {
+      "status": "certified",
+      "all_single_proofs_verified": true,
+      "all_links_verified": true,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T16:36:47.338711+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [],
+        "proof_failures": [],
+        "verify_ms_total": 327.85
+      }
+    }
+  },
+  {
+    "experiment": "tamper_last",
+    "fault_at": 4,
+    "fault_type": "tamper",
+    "expected_status": "invalid",
+    "actual_status": "certified",
+    "test_passed": false,
+    "metrics": {
+      "total_ms": 5068.86,
+      "execution_ms": 4993.15,
+      "total_proof_gen_ms": 4819.71,
+      "verification_ms": 75.58,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.45,
+          "prove_ms": 1127.96,
+          "total_ms": 1157.48,
+          "proof_size_bytes": 19601,
+          "peak_rss_mb": 81.12,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 2.62,
+          "prove_ms": 1362.8,
+          "total_ms": 1415.48,
+          "proof_size_bytes": 19505,
+          "peak_rss_mb": 83.0,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 4.98,
+          "prove_ms": 1100.74,
+          "total_ms": 1144.18,
+          "proof_size_bytes": 19483,
+          "peak_rss_mb": 84.07,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 3.18,
+          "prove_ms": 1228.21,
+          "total_ms": 1275.53,
+          "proof_size_bytes": 18999,
+          "peak_rss_mb": 84.79,
+          "fault_injected": true
+        }
+      ]
+    },
+    "certificate": {
+      "status": "certified",
+      "all_single_proofs_verified": true,
+      "all_links_verified": true,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T16:36:52.410696+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [],
+        "proof_failures": [],
+        "verify_ms_total": 75.58
+      }
+    }
+  },
+  {
+    "experiment": "tamper_mid",
+    "fault_at": 2,
+    "fault_type": "tamper",
+    "expected_status": "invalid",
+    "actual_status": "certified",
+    "test_passed": false,
+    "metrics": {
+      "total_ms": 5168.79,
+      "execution_ms": 5094.02,
+      "total_proof_gen_ms": 4955.67,
+      "verification_ms": 74.68,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.21,
+          "prove_ms": 1331.83,
+          "total_ms": 1378.64,
+          "proof_size_bytes": 19552,
+          "peak_rss_mb": 89.91,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 1.86,
+          "prove_ms": 1233.12,
+          "total_ms": 1264.3,
+          "proof_size_bytes": 19517,
+          "peak_rss_mb": 84.49,
+          "fault_injected": true
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 2.53,
+          "prove_ms": 1218.75,
+          "total_ms": 1252.44,
+          "proof_size_bytes": 19496,
+          "peak_rss_mb": 85.48,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 3.0,
+          "prove_ms": 1171.97,
+          "total_ms": 1198.14,
+          "proof_size_bytes": 18981,
+          "peak_rss_mb": 85.31,
+          "fault_injected": false
+        }
+      ]
+    },
+    "certificate": {
+      "status": "certified",
+      "all_single_proofs_verified": true,
+      "all_links_verified": true,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T16:36:57.582220+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [],
+        "proof_failures": [],
+        "verify_ms_total": 74.68
+      }
+    }
+  },
+  {
+    "experiment": "skip",
+    "fault_at": 4,
+    "fault_type": "skip",
+    "expected_status": "invalid",
+    "actual_status": "certified",
+    "test_passed": false,
+    "metrics": {
+      "total_ms": 5139.96,
+      "execution_ms": 5066.91,
+      "total_proof_gen_ms": 4944.89,
+      "verification_ms": 72.89,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.33,
+          "prove_ms": 1189.15,
+          "total_ms": 1219.42,
+          "proof_size_bytes": 19548,
+          "peak_rss_mb": 85.1,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 2.39,
+          "prove_ms": 1239.04,
+          "total_ms": 1275.2,
+          "proof_size_bytes": 19553,
+          "peak_rss_mb": 84.12,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 2.13,
+          "prove_ms": 1276.11,
+          "total_ms": 1303.76,
+          "proof_size_bytes": 19556,
+          "peak_rss_mb": 84.54,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 1.79,
+          "prove_ms": 1240.59,
+          "total_ms": 1267.96,
+          "proof_size_bytes": 19006,
+          "peak_rss_mb": 108.0,
+          "fault_injected": true
+        }
+      ]
+    },
+    "certificate": {
+      "status": "certified",
+      "all_single_proofs_verified": true,
+      "all_links_verified": true,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T16:37:02.724685+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [],
+        "proof_failures": [],
+        "verify_ms_total": 72.89
+      }
+    }
+  },
+  {
+    "experiment": "random",
+    "fault_at": 4,
+    "fault_type": "random",
+    "expected_status": "invalid",
+    "actual_status": "certified",
+    "test_passed": false,
+    "metrics": {
+      "total_ms": 5277.88,
+      "execution_ms": 5193.87,
+      "total_proof_gen_ms": 5029.43,
+      "verification_ms": 83.94,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.82,
+          "prove_ms": 1256.42,
+          "total_ms": 1291.37,
+          "proof_size_bytes": 19592,
+          "peak_rss_mb": 83.86,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 2.42,
+          "prove_ms": 1294.75,
+          "total_ms": 1339.74,
+          "proof_size_bytes": 19486,
+          "peak_rss_mb": 107.01,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 3.32,
+          "prove_ms": 1222.21,
+          "total_ms": 1256.43,
+          "proof_size_bytes": 19520,
+          "peak_rss_mb": 107.18,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 5.13,
+          "prove_ms": 1256.05,
+          "total_ms": 1305.88,
+          "proof_size_bytes": 19022,
+          "peak_rss_mb": 108.13,
+          "fault_injected": true
+        }
+      ]
+    },
+    "certificate": {
+      "status": "certified",
+      "all_single_proofs_verified": true,
+      "all_links_verified": true,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T16:37:08.007741+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [],
+        "proof_failures": [],
+        "verify_ms_total": 83.94
+      }
+    }
+  },
+  {
+    "experiment": "replay",
+    "fault_at": 4,
+    "fault_type": "replay",
+    "expected_status": "invalid",
+    "actual_status": "certified",
+    "test_passed": false,
+    "metrics": {
+      "total_ms": 5581.34,
+      "execution_ms": 5481.74,
+      "total_proof_gen_ms": 5324.87,
+      "verification_ms": 99.52,
+      "per_slice": [
+        {
+          "slice_id": 1,
+          "exec_ms": 1.18,
+          "prove_ms": 1245.9,
+          "total_ms": 1283.39,
+          "proof_size_bytes": 19571,
+          "peak_rss_mb": 108.33,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 2,
+          "exec_ms": 5.31,
+          "prove_ms": 1358.08,
+          "total_ms": 1406.84,
+          "proof_size_bytes": 19495,
+          "peak_rss_mb": 109.57,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 3,
+          "exec_ms": 4.42,
+          "prove_ms": 1470.28,
+          "total_ms": 1510.78,
+          "proof_size_bytes": 19530,
+          "peak_rss_mb": 109.75,
+          "fault_injected": false
+        },
+        {
+          "slice_id": 4,
+          "exec_ms": 1.79,
+          "prove_ms": 1250.61,
+          "total_ms": 1280.17,
+          "proof_size_bytes": 19031,
+          "peak_rss_mb": 108.98,
+          "fault_injected": true
+        }
+      ]
+    },
+    "certificate": {
+      "status": "certified",
+      "all_single_proofs_verified": true,
+      "all_links_verified": true,
+      "final_output_commit": "[[\"-0.366455078125\", \"-0.0361328125\", \"-0.149658203125\", \"0.3216552734375\"]]",
+      "timestamp": "2026-03-20T16:37:13.591239+00:00",
+      "model_digests": [
+        "0fec4626869bee5f2b69a410cd489459a69a5ed5da7728d25dd05dabc9a9ba09",
+        "4cdbaccd366421dca1f64d85b4bec22265463cbf3c863b1f62929c8a8b37688d",
+        "9de87bcb1b76844ef5715f3c6bb797308c04059f4b665d74370f6e5f3b142e9d",
+        "c666376fb335a098fc3215af69cd79d00adf17837348edcf788fc703862c3ba9"
+      ],
+      "details": {
+        "link_failures": [],
+        "proof_failures": [],
+        "verify_ms_total": 99.52
+      }
+    }
+  }
+]

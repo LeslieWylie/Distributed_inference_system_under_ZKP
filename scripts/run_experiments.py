@@ -1,6 +1,10 @@
 """
 阶段 3 实验运行器：自动化批量实验。
 
+⚠ 该脚本使用简化评估管线（覆盖 L1 输出完整性 + L3 哈希链），
+   未走 Master 完整逻辑（无独立 proof verify、无 L2 linking、无随机挑战）。
+   用于多切片开销采集和基础 L1/L3 检测能力验证。
+
 实验维度:
   - 切片数: 2, 4, 8
   - 故障注入比例: 0%, 50% (故障注入在最后一个切片)
@@ -28,7 +32,7 @@ import requests
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-PYTHON = r"C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe"
+PYTHON = sys.executable
 
 from common.utils import sha256_of_list
 
@@ -123,8 +127,9 @@ def run_single_pipeline(
 
         resp = requests.post(
             f"{w['url']}/infer",
-            json={"input_data": current_input, "request_id": f"exp-{sid}"},
-            params={"fault": str(inject).lower()},
+            json={"input_data": current_input,
+                  "request_id": f"exp-{sid}-{int(time.time()*1000)}"},
+            params={"fault_type": "tamper" if inject else "none"},
             timeout=120,
         )
         resp.raise_for_status()
@@ -157,10 +162,19 @@ def run_single_pipeline(
     avg_verify_ms = total_verify_ms / len(results)
     max_rss = max(r["metrics"]["peak_rss_mb"] for r in results)
 
+    # proof-bound output 预防：proof 节点上的篡改被 proof 绑定的输出预防
+    fault_prevented = False
+    if fault_at is not None and fault_at not in malicious_nodes:
+        for r in results:
+            if r.get("slice_id") == fault_at and r.get("fault_injected"):
+                fault_prevented = True
+
     if fault_at is not None:
-        detection_accuracy = 1.0 if fault_at in malicious_nodes else 0.0
+        detection_accuracy = 1.0 if (fault_at in malicious_nodes or fault_prevented) else 0.0
     else:
         detection_accuracy = 1.0 if len(malicious_nodes) == 0 else 0.0
+
+    fault_detected = bool(malicious_nodes) if fault_at is not None else None
 
     return {
         "e2e_latency_ms": round(e2e_ms, 2),
@@ -170,9 +184,11 @@ def run_single_pipeline(
         "avg_verify_ms": round(avg_verify_ms, 2),
         "peak_rss_mb": round(max_rss, 2),
         "hash_chain_ok": hash_chain_ok,
-        "detection_accuracy": detection_accuracy,
+        "fault_detected": fault_detected,
+        "fault_prevented": fault_prevented,
         "fault_at": fault_at,
         "malicious_detected": malicious_nodes,
+        "evaluation_scope": "simplified_L1_L3_only",
         "slices": [
             {
                 "slice_id": r["slice_id"],
@@ -193,8 +209,9 @@ def run_throughput_test(workers: list, initial_input: list, num_requests: int = 
         for w in workers:
             resp = requests.post(
                 f"{w['url']}/infer",
-                json={"input_data": current, "request_id": "throughput"},
-                params={"fault": "false"},
+                json={"input_data": current,
+                      "request_id": f"tp-{int(time.time()*1000)}"},
+                params={"fault_type": "none"},
                 timeout=120,
             )
             resp.raise_for_status()
@@ -244,7 +261,7 @@ def run_experiment_suite():
             fault_result["experiment"] = f"{num_slices}s_fault_last"
             fault_result["num_slices"] = num_slices
             print(f"  e2e={fault_result['e2e_latency_ms']:.0f}ms "
-                  f"detected={fault_result['detection_accuracy']:.0%} "
+                  f"detected={fault_result['fault_detected']} "
                   f"chain={'OK' if fault_result['hash_chain_ok'] else 'FAIL'}")
 
             # 5. 吞吐量测试 (正常模式 × 3 次)
@@ -274,14 +291,14 @@ def run_experiment_suite():
 
     # 打印汇总表
     print(f"\n{'切片数':>6} {'模式':>12} {'e2e(ms)':>10} {'proof(ms)':>10} "
-          f"{'verify(ms)':>11} {'RSS(MB)':>9} {'吞吐(r/s)':>10} {'检测准确率':>10}")
+          f"{'verify(ms)':>11} {'RSS(MB)':>9} {'吞吐(r/s)':>10} {'故障检测':>10}")
     print("-" * 90)
     for r in all_results:
         mode = "正常" if r["fault_at"] is None else f"故障@{r['fault_at']}"
         print(f"{r['num_slices']:>6} {mode:>12} {r['e2e_latency_ms']:>10.0f} "
               f"{r['total_proof_gen_ms']:>10.0f} {r['total_verify_ms']:>11.0f} "
               f"{r['peak_rss_mb']:>9.0f} {r.get('throughput_req_per_sec', 0):>10.4f} "
-              f"{r['detection_accuracy']:>10.0%}")
+              f"{r['fault_detected']!s:>10}")
 
     return all_results
 

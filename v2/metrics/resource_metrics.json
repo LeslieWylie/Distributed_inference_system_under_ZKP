@@ -1,0 +1,40 @@
+{
+  "num_slices": 4,
+  "resource_profile": {
+    "cpu_percent_avg": 576.45,
+    "cpu_percent_max": 1133.6,
+    "rss_mb_avg": 87.35,
+    "rss_mb_peak": 219.39,
+    "samples": 13
+  },
+  "throughput": {
+    "num_requests": 5,
+    "total_ms": 37894.04,
+    "requests_per_sec": 0.1319
+  },
+  "detection_accuracy": {
+    "true_positive": 5,
+    "false_positive": 0,
+    "false_negative": 0,
+    "true_negative": 3,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "note": "Phase A prevents attacks (proof-bound output replaces tampered data). Detection metrics use deferred pipeline where tampered data flows to next slice and is caught by linking/terminal binding."
+  },
+  "per_slice_proof_ms": [
+    1166.59,
+    1156.28,
+    1158.39,
+    1274.88
+  ],
+  "per_slice_exec_ms": [
+    9.11,
+    2.96,
+    2.19,
+    3.73
+  ],
+  "total_proof_gen_ms": 4756.14,
+  "verification_ms": 268.7
+}

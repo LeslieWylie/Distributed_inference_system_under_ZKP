@@ -1,0 +1,70 @@
+[
+  {
+    "num_slices": 2,
+    "compile_ms": 19555.34,
+    "normal": {
+      "status": "certified",
+      "total_ms": 2962.55,
+      "execution_ms": 2922.88,
+      "proof_gen_ms": 2824.93,
+      "verification_ms": 39.53,
+      "per_slice_proof_ms": [
+        1485.27,
+        1339.66
+      ]
+    },
+    "tamper": {
+      "status": "invalid",
+      "detected": true,
+      "total_ms": 2642.31
+    }
+  },
+  {
+    "num_slices": 4,
+    "compile_ms": 19602.92,
+    "normal": {
+      "status": "certified",
+      "total_ms": 7163.49,
+      "execution_ms": 7080.35,
+      "proof_gen_ms": 6808.72,
+      "verification_ms": 83.06,
+      "per_slice_proof_ms": [
+        1723.3,
+        1982.95,
+        1676.09,
+        1426.38
+      ]
+    },
+    "tamper": {
+      "status": "invalid",
+      "detected": true,
+      "total_ms": 6589.08
+    }
+  },
+  {
+    "num_slices": 8,
+    "compile_ms": 40850.5,
+    "normal": {
+      "status": "certified",
+      "total_ms": 13470.1,
+      "execution_ms": 13301.51,
+      "proof_gen_ms": 12700.72,
+      "verification_ms": 168.24,
+      "per_slice_proof_ms": [
+        1741.87,
+        1592.21,
+        1579.94,
+        1500.17,
+        1819.95,
+        1557.08,
+        1424.0,
+        1485.5
+      ]
+    },
+    "tamper": {
+      "status": "invalid",
+      "detected": true,
+      "total_ms": 12397.76
+    }
+  }
+]

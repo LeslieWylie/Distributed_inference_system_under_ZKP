@@ -1,12 +1,12 @@
 """
-P6：ZK 链验证实验 + P4：保真度采集
+P4：切片保真度采集 + P6：完整性检查机制对比
 
-验证三种一致性校验方案的对比：
-  1. 外部哈希链 (SHA-256, 当前方案)
-  2. 电路内哈希绑定 (EZKL hashed mode)
-  3. 混合模式 (hashed + 选择性验证)
+⚠ P6 不是严格的跨节点 proof linking 实证，而是三种完整性检查机制的对比：
+  1. 外部哈希链 (SHA-256, all_public mode)
+  2. 电路内 Poseidon 哈希绑定 (hashed mode)
+  3. 完全隐私模式 (private mode)
 
-同时采集切片保真度 (Fidelity) 数据。
+P4 采集切片保真度 (PyTorch 切片一致性验证，非 ONNXRuntime/EZKL 量化路径)。
 
 产出: metrics/p4_p6_results.json
 """
@@ -23,7 +23,7 @@ import numpy as np
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-PYTHON = r"C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe"
+PYTHON = sys.executable
 
 from common.utils import sha256_of_list
 

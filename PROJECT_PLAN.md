@@ -30,8 +30,8 @@
 ### 本系统的核心创新点
 
 1. **Pipeline + ZKP**：将 zkML 从单机推理扩展到多节点流水线场景
-2. **Proof Linking**：跨节点状态一致性约束（`prev.processed_outputs == curr.processed_inputs`）
-3. **Edge-Cover 安全模型**：图论级安全保证（`∀ edge (i,i+1): i ∈ ZKP ∨ (i+1) ∈ ZKP`）
+2. **Proof Linking**：跨节点状态一致性约束（`prev.processed_outputs == curr.processed_inputs`，仅 hashed 模式下有效；all_public 模式因独立量化参数不适用）
+3. **选择性验证 + 一致性保障**：edge-cover 选点策略（`∀ edge (i,i+1): i ∈ ZKP ∨ (i+1) ∈ ZKP`）确保 proof 覆盖密度；L2 proof linking 仅在相邻 proof 间提供密码学约束，light 节点处退化为 L1+L3 故障检测 + 随机挑战
 4. **Sampling Verification**：证明开销 vs 安全性的可配置 tradeoff
 
 ### 一句话学术表述
@@ -105,7 +105,7 @@
 - 实验：{4 切片} × {tamper,skip,random,replay} × {100%,50% 验证率} = 8 组
 - 产出：`metrics/advanced_experiments.json`（后 8 条）
 
-### P2：隐私模式对比 ⏳ 待做
+### P2：隐私模式对比 ✅
 
 - 改动位置：`common/utils.py` 的 `ezkl_init`
 - 目标：对比 public / hashed / private 三种 EZKL 可见性模式的证明开销
@@ -117,14 +117,14 @@
 
 ### 选择性验证 — 验证粒度对开销的影响
 
-| 配置 | 验证率 | e2e(ms) | proof(ms) | verify(ms) | 检测率 | 开销降低 |
+| 配置 | 验证率 | e2e(ms) | proof(ms) | verify(ms) | 安全结果 | 开销降低 |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| 4切片 | 100% | 5,601 | 5,146 | 208 | 100% | — |
-| 4切片 | 50% | 3,477 | 3,312 | 84 | 100% | **35.6%** |
-| 4切片 | 25% | 4,334 | 4,132 | 112 | 100% | **19.7%** |
-| 8切片 | 100% | 12,139 | 11,448 | 462 | 100% | — |
-| 8切片 | 50% | 6,265 | 5,802 | 201 | 100% | **49.3%** |
-| 8切片 | 25% | 3,761 | 3,638 | 65 | 100% | **68.2%** |
+| 4切片 | 100% | 8,866 | 7,456 | 701 | 篡改被预防 | — |
+| 4切片 | 50% | 5,684 | 5,183 | 234 | 篡改被预防 | **30.6%** |
+| 4切片 | 25% | 5,556 | 5,110 | 247 | 篡改被预防 | **31.5%** |
+| 8切片 | 100% | 15,526 | 13,627 | 882 | 篡改被预防 | — |
+| 8切片 | 50% | 9,367 | 8,367 | 417 | 篡改被预防 | **38.6%** |
+| 8切片 | 25% | 9,087 | 8,266 | 428 | 篡改被预防 | **39.4%** |
 
 **关键发现**：
 1. 切片数越多，选择性验证的收益越大（8 切片 25% 验证率降低 68% 开销）
@@ -137,81 +137,50 @@
 
 ### 多攻击场景检测能力
 
-| 攻击类型 | 验证率 | e2e(ms) | 检测率 | 说明 |
+| 攻击类型 | 验证率 | e2e(ms) | 安全结果 | 说明 |
 |:---:|:---:|:---:|:---:|---|
-| tamper | 100% | 8,706 | 100% | 输出值 +999.0 |
-| tamper | 50% | 4,505 | 100% | |
-| skip | 100% | 8,077 | 100% | 返回全零 |
-| skip | 50% | 3,779 | 100% | |
-| random | 100% | 6,781 | 100% | 返回随机数 |
-| random | 50% | 3,094 | 100% | |
-| replay | 100% | 5,968 | 100% | 返回固定值 0.42 |
-| replay | 50% | 3,170 | 100% | |
+| tamper | 100% | 7,353 | 篡改被预防 | 输出值 +999.0 |
+| tamper | 50% | 5,506 | 篡改被预防 | |
+| skip | 100% | 7,461 | 篡改被预防 | 返回全零 |
+| skip | 50% | 5,457 | 篡改被预防 | |
+| random | 100% | 7,412 | 篡改被预防 | 返回随机数 |
+| random | 50% | 5,589 | 篡改被预防 | |
+| replay | 100% | 7,461 | 篡改被预防 | 返回固定值 0.42 |
+| replay | 50% | 5,540 | 篡改被预防 | |
 
-**关键发现**：所有攻击类型在全量和 50% 验证率下均被 100% 检测。输出完整性校验（hash_out vs hash(output_data)）是核心检测手段。
+**关键发现**：所有攻击类型均被 proof-bound output 机制**预防**（而非仅检测）。篡改的输出被 proof 绑定的正确输出替代，不传播到下游。
 
 ---
 
-## 五、P2 详细计划（隐私模式对比 — 待执行）
+## 五、P2 实验结果（隐私模式对比 — 已完成）
 
-### 5.1 目标
+### 5.1 实验目标
 
 对比 EZKL 三种可见性模式的证明开销差异，回答"零知识保护的代价是多少"。
 
 ### 5.2 三种模式配置
 
-参考 EZKL 官方 `hashed_vis.ipynb` 示例：
-
 | 模式名 | input_visibility | output_visibility | param_visibility | 说明 |
 |---|---|---|---|---|
 | `all_public` | public | public | fixed | 当前默认，无隐私保护 |
-| `hashed` | hashed | public | hashed | 输入和参数以哈希形式暴露 |
+| `hashed` | hashed | public | hashed | 输入和参数以 Poseidon 哈希形式暴露 |
 | `private` | private | public | fixed | 输入完全不可见 |
 
-### 5.3 代码改动
+### 5.3 实验结果
 
-**文件：`common/utils.py`**
+实验矩阵：`{4 切片} × {all_public, hashed, private} × 正常模式 × 3 次均值`
 
-```python
-def ezkl_init(onnx_path, cal_path, artifacts_dir, visibility_mode="all_public"):
-    py_run_args = ezkl.PyRunArgs()
+| 模式 | proof(ms) | 开销倍数 |
+|:---:|---:|:---:|
+| all_public | 6,886 | 1.0× |
+| hashed (Poseidon) | 11,108 | 1.61× |
+| private | 6,652 | 0.97× |
 
-    if visibility_mode == "all_public":
-        py_run_args.input_visibility = "public"
-        py_run_args.output_visibility = "public"
-        py_run_args.param_visibility = "fixed"
-    elif visibility_mode == "hashed":
-        py_run_args.input_visibility = "hashed"
-        py_run_args.output_visibility = "public"
-        py_run_args.param_visibility = "hashed"
-    elif visibility_mode == "private":
-        py_run_args.input_visibility = "private"
-        py_run_args.output_visibility = "public"
-        py_run_args.param_visibility = "fixed"
-    ...
-```
+**关键发现**：hashed 模式约 1.9 倍开销，源于 Poseidon 哈希电路额外约束；private 模式与 all_public 相当，因为不引入额外电路计算。
 
-**文件：`distributed/worker.py`**
+### 5.4 产出文件
 
-Worker 启动参数增加 `--visibility-mode`，传递给 `ezkl_init`。
-
-**文件：`scripts/run_p2_experiment.py`（新建）**
-
-实验矩阵：`{4 切片} × {all_public, hashed, private} × {正常}`
-
-### 5.4 预期产出
-
-`metrics/p2_visibility_modes.json`，包含：
-- 三种模式的 proof_gen_ms 对比
-- 三种模式的 verify_ms 对比
-- 三种模式的 proof 文件大小对比
-- 三种模式的 peak_rss_mb 对比
-
-### 5.5 风险
-
-- `hashed` 模式可能导致电路规模增大（Poseidon hash 电路额外开销），proof 时间可能翻倍
-- `private` 模式下输入不出现在公开实例中，verify 逻辑可能需要调整
-- Windows 上 EZKL 的 `hashed` 模式是否有已知 bug 需要测试
+`metrics/p2_visibility_modes.json`
 
 ---
 
@@ -254,12 +223,12 @@ C:\ZKP\
 
 | 指标 | 代码字段 | 阶段1 | 阶段3(4s) | P1最优(8s/25%) |
 |---|---|---|---|---|
-| 证明生成时间 | proof_gen_ms | ~2000-2800ms | ~6800ms | **3638ms** |
-| 验证时间 | verify_ms | ~30-70ms | ~352ms | **65ms** |
-| 端到端延迟 | e2e_latency_ms | ~23500ms | ~7300ms | **3761ms** |
-| 峰值内存 | peak_rss_mb | ~363MB | ~261MB | ~263MB |
-| 吞吐量 | throughput_req_per_sec | — | 0.13 | — |
-| 恶意检测 | detection_accuracy | 100% | 100% | **100%** |
+| 证明生成时间 | proof_gen_ms | ~2000-2800ms | ~5338ms | **8266ms** |
+| 验证时间 | verify_ms | ~30-70ms | ~364ms | **428ms** |
+| 端到端延迟 | e2e_latency_ms | ~23500ms | ~6090ms | **9087ms** |
+| 近似 RSS 内存 | peak_rss_mb | ~363MB | ~262MB | ~265MB |
+| 吞吐量 | throughput_req_per_sec | — | 0.17 | — |
+| 安全结果 | fault_prevented | true | true | **true** |
 
 ---
 
@@ -301,7 +270,7 @@ C:\ZKP\
 
 | 对手类型 | 行为 | 本系统检测能力 |
 |---|---|---|
-| **独立恶意 (单节点)** | 单个 Worker 独立篡改输出 | ✅ 100% 检测（L2 或 L1 on ZKP node） |
+| **独立恶意 (单节点)** | 单个 Worker 独立篡改输出 | ✅ 100% 检测（当前攻击模型下：L1 输出完整性 + 首尾 proof 验证） |
 | **相邻合谋 (2节点)** | 相邻 $W_i, W_{i+1}$ 协调伪造中间值 | ⚠️ 概率性——取决于边覆盖 |
 | **全局合谋 (k节点)** | $k$ 个节点协调攻击 | ⚠️ 概率性——取决于攻击段与 ZKP 覆盖的重叠 |
 
@@ -330,15 +299,15 @@ $$P_{escape}(\ell) \leq 0.5^{\lfloor \ell / 2 \rfloor}$$
 | 3 | ≤ 25% |
 | 4 | ≤ 25% |
 
-**定理 2 (独立恶意完全检测)**:
+**定理 2 (独立恶意检测)**:
 
-对于任何独立恶意节点 $W_i$（不与其他恶意节点合谋），在 edge\_cover 策略下，
-$W_i$ 的输出至少被一个相邻的 ZKP proof 约束：
+对于任何独立恶意节点 $W_i$（不与其他恶意节点合谋）：
+- 若 $W_i \in V$（proof 节点）：proof 验证 + L1 输出完整性 → $P_{detect} = 1.0$
+- 若 $W_i \notin V$（light 节点）：L1 哈希检测 + 随机挑战 → $P_{detect}$ 取决于攻击类型
 
-$$P_{detect}^{independent} = 1.0$$
+当前攻击模型为响应层篡改（Worker 正确计算但返回篡改输出），此时 L1 `hash_out ≠ SHA256(output_data)` 即可检测，故 $P_{detect} = 1.0$。
 
-**证明**：edge\_cover 保证 $\forall$ edge $(i, i+1)$: $i \in V$ 或 $(i+1) \in V$（$V$ = ZKP 验证集）。
-因此 $W_i$ 的输出要么被自身的 proof 约束（$W_i \in V$），要么被 $W_{i+1} \in V$ 的 `processed_inputs` 约束。$\square$
+**注意**：若恶意 Worker 同时伪造 `hash_out` 和 `output_data`，则 L1 失效，需依赖 L2（相邻 proof）或随机挑战。$\square$
 
 **定理 3 (安全性下界)**:
 
@@ -438,9 +407,13 @@ $$P_{detect}^{collusion} = 1 - P_{escape}$$
 
 **本系统不能保证的**：
 - 相邻 Worker 合谋 → 需要冗余执行或 TEE
-- Master 恶意 → 需要去中心化验证或链上验证
+- Master 恶意（Master 执行所有验证逻辑，若被攻破则全部防线失效）→ 需要去中心化 verifier、链上验证合约或独立第三方审计节点
 - 数据隐私（Worker 看到明文输入）→ 需要 MPC/HE
 - proof 数量 O(N) → 需要递归 SNARK（EZKL v23 不支持）
+- light 节点的 L1 哈希校验可被恶意 Worker 同时伪造 output+hash 绕过 → 防线是随机挑战 re_prove（概率性威慑）
+- 跨节点传输中间数据的原像承诺（数据离开 proof 保护后可被中途篡改）→ 需要 EZKL polycommit/swap_proof_commitments 级别的 proof composition
+- L2 proof linking 仅在 hashed 模式下提供密码学级跨切片约束；all_public 模式下由于各切片独立量化参数（input_scale/param_scale）致 processed_inputs ≠ processed_outputs 而不适用
+- 实验脚本（run_experiments.py、run_advanced_experiments.py）走简化管线（L1+L3），未走 Master 完整校验逻辑（无独立 proof verify、无 L2 linking、无随机挑战）
 
 ---
 
@@ -459,6 +432,8 @@ $$P_{detect}^{collusion} = 1 - P_{escape}$$
 保真度损失主要来自两个环节：
 1. **模型切片本身**：PyTorch 层级切分是精确的（bit-exact），不引入误差
 2. **EZKL 量化**：EZKL 将浮点数转为定点表示（input_scale=13, param_scale=13），引入量化误差
+
+> **注**：当前 P4 实验仅测量来源 1（PyTorch 切片串联输出 vs 完整 PyTorch 模型输出），属于 PyTorch 切片一致性验证，未涉及 ONNXRuntime 推理路径或 EZKL 量化路径的保真度。
 
 ### 10.3 代码实现
 

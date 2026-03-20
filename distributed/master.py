@@ -24,6 +24,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
 from common.utils import sha256_of_list
+from common.utils import ezkl_verify_proof, load_proof_instances_from_witness
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +122,7 @@ def run_pipeline(
     fault_type: str = "tamper",
     verify_ratio: float = 1.0,
     verify_strategy: str = "edge_cover",
+    seed: int | None = None,
 ) -> dict:
     """
     按流水线顺序调用各 Worker，收集结果并执行校验。
@@ -137,13 +139,18 @@ def run_pipeline(
         包含所有结果和指标的字典。
     """
     num_slices = len(workers)
+    if seed is not None:
+        random.seed(seed)
     verified_set = _select_verified_slices(num_slices, verify_ratio, verify_strategy)
 
     print("=" * 60)
     print("Master: 分布式推理流水线启动")
     print(f"  Workers: {num_slices}")
-    print(f"  Verify ratio: {verify_ratio:.0%} -> proof at slices {sorted(verified_set)}")
+    actual_proof_fraction = len(verified_set) / num_slices if num_slices > 0 else 0
+    print(f"  Verify ratio: {verify_ratio:.0%} (actual: {actual_proof_fraction:.0%}) -> proof at slices {sorted(verified_set)}")
     print(f"  Fault: {f'type={fault_type} at slice {fault_at}' if fault_at else 'None'}")
+    if seed is not None:
+        print(f"  Seed: {seed}")
     print("=" * 60)
 
     e2e_start = time.perf_counter()
@@ -151,7 +158,9 @@ def run_pipeline(
     current_input = initial_input
     results = []
     hash_chain_ok = True
-    malicious_nodes = []
+    l1_findings = []   # 输出完整性 (SHA-256)
+    l2_findings = []   # ZKP proof linking / master verify
+    l3_findings = []   # 外部哈希链一致性
 
     for i, worker in enumerate(workers):
         sid = worker["slice_id"]
@@ -170,37 +179,93 @@ def run_pipeline(
         t0 = time.perf_counter()
         resp = requests.post(
             f"{url}{endpoint}",
-            json={"input_data": current_input, "request_id": f"req-{sid}"},
+            json={"input_data": current_input,
+                  "request_id": f"req-{sid}-{int(time.time()*1000)}"},
             params={"fault_type": ft},
             timeout=120,
         )
         rtt_ms = (time.perf_counter() - t0) * 1000
         resp.raise_for_status()
         data = resp.json()
+        worker_verified = data.get("verified")
+
+        if use_proof:
+            artifact_paths = data.get("proof_artifacts") or {}
+            verify_paths = {
+                "settings": artifact_paths.get("settings"),
+                "vk": artifact_paths.get("vk"),
+                "srs": artifact_paths.get("srs"),
+            }
+            proof_path = artifact_paths.get("proof_path")
+            witness_path = artifact_paths.get("witness_path")
+
+            try:
+                local_verified = bool(
+                    proof_path
+                    and all(verify_paths.values())
+                    and ezkl_verify_proof(proof_path, verify_paths)
+                )
+            except Exception as e:
+                local_verified = False
+                print(f"    ⚠ Master local verify error: {e}")
+
+            data["verified"] = local_verified
+
+            # L2 linking 数据优先从 proof.json 的 pretty_public_inputs 提取
+            # （已被 ezkl.verify 认证），而非依赖 witness 文件
+            proof_data_for_linking = data.get("proof") or {}
+            ppi = proof_data_for_linking.get("pretty_public_inputs") or {}
+            data["proof_instances"] = {
+                "processed_inputs": ppi.get("processed_inputs") if ppi.get("processed_inputs") else None,
+                "processed_outputs": ppi.get("processed_outputs") if ppi.get("processed_outputs") else None,
+                "rescaled_inputs": ppi.get("rescaled_inputs") if ppi.get("rescaled_inputs") else None,
+                "rescaled_outputs": ppi.get("rescaled_outputs") if ppi.get("rescaled_outputs") else None,
+            }
+
+            if not local_verified:
+                hash_chain_ok = False
+                l2_findings.append({
+                    "type": "proof_verify_failed",
+                    "slice_id": sid,
+                })
+
+            if worker_verified is not None and worker_verified != local_verified:
+                l2_findings.append({
+                    "type": "verify_mismatch",
+                    "slice_id": sid,
+                    "worker_verified": worker_verified,
+                    "master_verified": local_verified,
+                })
 
         print(f"    proof_gen: {data['metrics']['proof_gen_ms']:.0f} ms | "
               f"verify: {data['metrics']['verify_ms']:.0f} ms | "
               f"rtt: {rtt_ms:.0f} ms")
         print(f"    hash_in:  {data['hash_in'][:16]}...")
         print(f"    hash_out: {data['hash_out'][:16]}...")
-        print(f"    verified: {data['verified']}")
+        if use_proof:
+            print(f"    worker_verified: {worker_verified}")
+            print(f"    master_verified: {data['verified']}")
+        else:
+            print(f"    verified: {data['verified']}")
 
         # ══════════════════════════════════════════════════════════
         # 三层校验体系（安全等级严格区分）
         # ══════════════════════════════════════════════════════════
 
-        # 层 1：输出完整性 (SHA-256) — 故障检测级，非对抗安全
-        #   → 检测无意错误（软件 bug、硬件故障、网络损坏）
+        # 层 1：输出完整性 (SHA-256) — 故障检测级
         #   → 对 ZKP 节点：hash_out 与 proof 绑定，具有密码学保证
-        #   → 对 light 节点：恶意 Worker 可伪造 hash_out，L1 无效
-        #   → 安全定位：fault detection，非 adversarial security
+        #   → 对 light 节点：L1 完全无效！恶意 Worker 可同时伪造
+        #     output_data 和 hash_out 使两者一致，绕过 L1
+        #   → light 节点的真正防线是随机挑战 (re_prove)：
+        #     re_prove 产生的 proof 中 processed_outputs 是电路级承诺，
+        #     不可伪造，可与 light 阶段声称的 output 交叉比对
+        #   → 安全定位：fault detection（proof 节点），deterrence（light 节点）
         actual_output_hash = sha256_of_list(data["output_data"])
         output_integrity = (data["hash_out"] == actual_output_hash)
         if not output_integrity:
             hash_chain_ok = False
-            malicious_nodes.append({
+            l1_findings.append({
                 "type": "output_tamper",
-                "layer": "L1_external_hash",
                 "slice_id": sid,
                 "expected": data["hash_out"][:16],
                 "actual": actual_output_hash[:16],
@@ -209,10 +274,11 @@ def run_pipeline(
         else:
             print(f"    ✓ L1 Output integrity OK (slice {sid})")
 
-        # 层 2：ZKP Proof Linking — 密码学安全级（系统唯一的密码学安全来源）
-        #   → 比对 prev.processed_outputs == curr.processed_inputs
-        #   → 这是 ZKP 公开实例，verify 通过 = 数学保证
-        #   → 安全前提：Poseidon collision-resistance + PLONK soundness
+        # 层 2：ZKP Proof Linking
+        #   → 比对 prev.outputs vs curr.inputs 的受认证公开实例
+        #   → 在 hashed 模式下，processed_outputs/inputs 是 Poseidon 哈希，具有密码学保证
+        #   → 在 all_public 模式下，两个独立编译的电路量化参数不同，
+        #     同一份浮点数据的量化值可能不相等 → linking 不适用
         #   → 边覆盖策略确保每条边至少一端有 ZKP
         if i > 0 and use_proof:
             prev = results[-1]
@@ -220,15 +286,20 @@ def run_pipeline(
             curr_instances = data.get("proof_instances")
 
             if prev_instances and curr_instances:
+                # 优先用 processed_outputs/inputs（hashed 模式，密码学级）
                 prev_out = prev_instances.get("processed_outputs")
                 curr_in = curr_instances.get("processed_inputs")
-                if prev_out is not None and curr_in is not None:
+
+                # 空列表表示 all_public 模式，无有效 linking 数据
+                prev_out_valid = prev_out and len(prev_out) > 0
+                curr_in_valid = curr_in and len(curr_in) > 0
+
+                if prev_out_valid and curr_in_valid:
                     proof_linked = (prev_out == curr_in)
                     if not proof_linked:
                         hash_chain_ok = False
-                        malicious_nodes.append({
+                        l2_findings.append({
                             "type": "proof_link_break",
-                            "layer": "L2_zkp_linking",
                             "between": [prev["slice_id"], sid],
                         })
                         print(f"    ⚠ L2 PROOF LINK BREAK: slice {prev['slice_id']} → {sid} "
@@ -236,7 +307,10 @@ def run_pipeline(
                     else:
                         print(f"    ✓ L2 Proof linked OK (slice {prev['slice_id']} → {sid})")
                 else:
-                    print(f"    ℹ L2 Skip (no processed instances)")
+                    # all_public 模式：无 processed instances，linking 不适用
+                    # 依赖 L3 哈希链 + 随机挑战提供一致性保障
+                    print(f"    ℹ L2 Skip (all_public mode: independent quantization, "
+                          f"linking not applicable)")
             else:
                 print(f"    ℹ L2 Skip (proof_instances not available)")
 
@@ -252,7 +326,8 @@ def run_pipeline(
 
             if not chain_match:
                 hash_chain_ok = False
-                malicious_nodes.append({
+                l3_findings.append({
+                    "type": "hash_chain_break",
                     "between": [prev["slice_id"], sid],
                     "expected": expected_hash[:16],
                     "actual": actual_hash[:16],
@@ -261,8 +336,46 @@ def run_pipeline(
             else:
                 print(f"    ✓ Hash chain OK (slice {prev['slice_id']} → {sid})")
 
+        # ── Proof-output binding (Master 侧独立验证) ──
+        # 对 proof 节点：Master 从 proof 公开实例独立提取电路输出，
+        # 与 Worker 声称的 output_data 交叉比对。
+        # 使用 proof 绑定的输出作为下游输入（不信任 Worker 声称的值）。
+        if use_proof and data.get("verified"):
+            ppi = (data.get("proof") or {}).get(
+                "pretty_public_inputs", {})
+            rescaled = ppi.get("rescaled_outputs", [])
+            if rescaled:
+                proof_output = []
+                for group in rescaled:
+                    if isinstance(group, list):
+                        for v in group:
+                            proof_output.append(float(v))
+                    else:
+                        proof_output.append(float(group))
+                if (proof_output
+                        and len(proof_output) == len(data["output_data"])):
+                    max_diff = max(
+                        abs(a - b)
+                        for a, b in zip(proof_output, data["output_data"])
+                    )
+                    if max_diff > 1.0:
+                        hash_chain_ok = False
+                        l1_findings.append({
+                            "type": "output_proof_mismatch",
+                            "slice_id": sid,
+                            "max_diff": round(max_diff, 6),
+                        })
+                        print(f"    ⚠ OUTPUT-PROOF MISMATCH at slice {sid} "
+                              f"(max_diff={max_diff:.6f})")
+                    else:
+                        print(f"    ✓ Output matches proof "
+                              f"(max_diff={max_diff:.6f})")
+                    data["output_data"] = proof_output
+                    data["hash_out"] = sha256_of_list(proof_output)
+
         # 补充 Master 侧指标
         data["metrics"]["rtt_ms"] = round(rtt_ms, 2)
+        data["request_input"] = list(current_input)
         results.append(data)
 
         # 下一个 Worker 的输入 = 本 Worker 的输出
@@ -278,21 +391,136 @@ def run_pipeline(
     if light_slices and len(light_slices) > 0:
         target = random.choice(light_slices)
         target_data = results[target["slice_id"] - 1]  # 0-indexed
-        print(f"\n[Master] 随机挑战 → Worker {target['slice_id']} (re_prove)")
+        target_req_id = target_data.get("request_id", "")
+        print(f"\n[Master] 随机挑战 → Worker {target['slice_id']} "
+              f"(re_prove, request_id={target_req_id})")
         try:
             resp = requests.post(
                 f"{target['url']}/re_prove",
-                json={"input_data": target_data.get("output_data", [])},
+                json={
+                    "input_data": target_data.get("request_input", []),
+                    "request_id": target_req_id,
+                },
                 timeout=180,
             )
             if resp.status_code == 200:
                 challenge = resp.json()
+                artifact_paths = challenge.get("proof_artifacts") or {}
+                verify_paths = {
+                    "settings": artifact_paths.get("settings"),
+                    "vk": artifact_paths.get("vk"),
+                    "srs": artifact_paths.get("srs"),
+                }
+                proof_path = artifact_paths.get("proof_path")
+                try:
+                    master_re_verified = bool(
+                        proof_path
+                        and all(verify_paths.values())
+                        and ezkl_verify_proof(proof_path, verify_paths)
+                    )
+                except Exception as e:
+                    master_re_verified = False
+                    print(f"    ⚠ Challenge local verify error: {e}")
+
                 challenge_result = {
                     "challenged_slice": target["slice_id"],
-                    "re_verified": challenge.get("verified", False),
+                    "challenged_request_id": target_req_id,
+                    "from_cache": challenge.get("from_cache", False),
+                    "cache_consistent": challenge.get("cache_consistent"),
+                    "worker_re_verified": challenge.get("verified", False),
+                    "master_re_verified": master_re_verified,
                     "re_prove_ms": challenge.get("metrics", {}).get("proof_gen_ms", 0),
+                    "output_cross_check": None,
                 }
-                print(f"    re_verified: {challenge_result['re_verified']} "
+
+                # ── 随机挑战交叉验证 ──
+                # light 节点的 L1 对恶意节点无效（可同时伪造 output+hash）。
+                # 真正的防御：re_prove 产生的 proof 绑定了电路级真实输出
+                # （proof.json 的 pretty_public_inputs 中的 outputs/rescaled_outputs，
+                #  或 hashed 模式下的 processed_outputs）。
+                # Master 把电路真实输出与 light 阶段 Worker 声称的 output 做比较。
+                #
+                # 从 proof.json 提取受认证的输出（不依赖 witness 文件）
+                challenge_proof = challenge.get("proof") or {}
+                challenge_ppi = challenge_proof.get("pretty_public_inputs") or {}
+                # public 模式下用 rescaled_outputs，hashed 模式下用 processed_outputs
+                circuit_outputs = (
+                    challenge_ppi.get("rescaled_outputs")
+                    or challenge_ppi.get("processed_outputs")
+                    or []
+                )
+                original_output = target_data.get("output_data", [])
+                original_hash_out = target_data.get("hash_out", "")
+
+                cross_check_passed = None
+                if circuit_outputs and original_output:
+                    # 将电路输出展平为可比较的浮点列表
+                    flat_circuit = []
+                    for group in circuit_outputs:
+                        if isinstance(group, list):
+                            for v in group:
+                                try:
+                                    flat_circuit.append(float(v))
+                                except (ValueError, TypeError):
+                                    flat_circuit.append(v)
+                        else:
+                            flat_circuit.append(group)
+
+                    # 比较电路输出与 light 阶段声称的输出
+                    max_diff = None
+                    if len(flat_circuit) == len(original_output):
+                        max_diff = max(
+                            abs(float(a) - float(b))
+                            for a, b in zip(flat_circuit, original_output)
+                        ) if flat_circuit else 0
+                        # EZKL 量化有精度损失，允许小误差
+                        cross_check_passed = (max_diff < 1.0)
+                    else:
+                        cross_check_passed = False
+
+                    challenge_result["output_cross_check"] = {
+                        "circuit_output_sample": str(flat_circuit[:4]),
+                        "claimed_output_sample": str(original_output[:4]),
+                        "max_diff": round(max_diff, 6) if max_diff is not None else None,
+                        "passed": cross_check_passed,
+                    }
+
+                    if cross_check_passed is False:
+                        hash_chain_ok = False
+                        l2_findings.append({
+                            "type": "challenge_output_mismatch",
+                            "slice_id": target["slice_id"],
+                            "detail": "re_prove 电路输出与 light 阶段声称的 output 不一致",
+                        })
+                        print(f"    ⚠ Challenge OUTPUT MISMATCH at slice {target['slice_id']}")
+                    elif cross_check_passed is True:
+                        print(f"    ✓ Challenge cross-check PASSED (max_diff={max_diff:.6f})")
+                    else:
+                        print(f"    ℹ Challenge cross-check inconclusive")
+                # 将 from_cache / cache_consistent 纳入正式判定
+                if not challenge.get("from_cache", False):
+                    l2_findings.append({
+                        "type": "challenge_cache_miss",
+                        "slice_id": target["slice_id"],
+                        "detail": "Worker 无法从缓存找回历史请求，挑战可追溯性降级",
+                    })
+                    print(f"    ⚠ Challenge cache miss (request_id not found in Worker cache)")
+                if challenge.get("cache_consistent") is False:
+                    hash_chain_ok = False
+                    l2_findings.append({
+                        "type": "challenge_cache_inconsistent",
+                        "slice_id": target["slice_id"],
+                        "detail": "Worker 缓存的 hash_out 与 output_data 不一致",
+                    })
+                    print(f"    ⚠ Challenge cache INCONSISTENT at slice {target['slice_id']}")
+                if not master_re_verified:
+                    hash_chain_ok = False
+                    l2_findings.append({
+                        "type": "challenge_verify_failed",
+                        "slice_id": target["slice_id"],
+                    })
+                print(f"    re_verified: worker={challenge_result['worker_re_verified']} "
+                      f"master={challenge_result['master_re_verified']} "
                       f"({challenge_result['re_prove_ms']:.0f} ms)")
         except Exception as e:
             print(f"    ⚠ Challenge failed: {e}")
@@ -302,32 +530,35 @@ def run_pipeline(
     first_hash_ok = (results[0]["hash_in"] == expected_first_hash)
     if not first_hash_ok:
         hash_chain_ok = False
-        malicious_nodes.append({
+        l3_findings.append({
+            "type": "first_input_hash_mismatch",
             "between": ["input", results[0]["slice_id"]],
             "expected": expected_first_hash[:16],
             "actual": results[0]["hash_in"][:16],
         })
 
     # ── 汇总 ──
-    total_nodes = len(workers)
-    detected_count = len(malicious_nodes)
-    # 如果注入了故障，检测准确率 = 是否检测到了
-    if fault_at is not None:
-        actually_faulty = 1
-        detection_accuracy = min(detected_count, 1) / actually_faulty
-    else:
-        detection_accuracy = 1.0 if detected_count == 0 else 0.0
+    all_findings = l1_findings + l2_findings + l3_findings
+    detected_slices = sorted(set(
+        f.get("slice_id") for f in all_findings if f.get("slice_id") is not None
+    ))
+    fault_detected = bool(all_findings) if fault_at is not None else None
 
     summary = {
         "e2e_latency_ms": round(e2e_ms, 2),
         "hash_chain_ok": hash_chain_ok,
-        "malicious_nodes": malicious_nodes,
-        "detection_accuracy": detection_accuracy,
+        "l1_findings": l1_findings,
+        "l2_findings": l2_findings,
+        "l3_findings": l3_findings,
+        "detected_slices": detected_slices,
+        "fault_detected": fault_detected,
         "fault_injected_at": fault_at,
         "fault_type": fault_type if fault_at else None,
         "verify_ratio": verify_ratio,
+        "actual_proof_fraction": round(actual_proof_fraction, 4),
         "verify_strategy": verify_strategy,
         "verified_slices": sorted(verified_set),
+        "seed": seed,
         "random_challenge": challenge_result,
         "slices": [
             {
@@ -354,13 +585,20 @@ def run_pipeline(
               f"verify={s['verify_ms']:.0f}ms rtt={s['rtt_ms']:.0f}ms"
               + (" [FAULT]" if s["fault_injected"] else ""))
     print(f"  哈希链:          {'PASS ✓' if hash_chain_ok else 'FAIL ✗'}")
-    print(f"  恶意检测准确率:  {detection_accuracy:.0%}")
-    if malicious_nodes:
-        for m in malicious_nodes:
-            if "between" in m:
-                print(f"    ⚠ 断链: {m['between']}")
-            elif "slice_id" in m:
-                print(f"    ⚠ 输出篡改: slice {m['slice_id']}")
+    print(f"  故障检测:        {fault_detected}")
+    print(f"  异常切片:        {detected_slices}")
+    if l1_findings:
+        print(f"  L1 发现 ({len(l1_findings)}):")
+        for f in l1_findings:
+            print(f"    ⚠ {f['type']}: slice {f.get('slice_id', '?')}")
+    if l2_findings:
+        print(f"  L2 发现 ({len(l2_findings)}):")
+        for f in l2_findings:
+            print(f"    ⚠ {f['type']}: {f.get('slice_id') or f.get('between', '?')}")
+    if l3_findings:
+        print(f"  L3 发现 ({len(l3_findings)}):")
+        for f in l3_findings:
+            print(f"    ⚠ {f['type']}: {f.get('between', '?')}")
     print("=" * 60)
 
     # 写入 metrics

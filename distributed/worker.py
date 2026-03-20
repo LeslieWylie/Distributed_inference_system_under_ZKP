@@ -65,6 +65,7 @@ class InferResponse(BaseModel):
     proof: dict | None = None
     verified: bool | None = None
     proof_instances: dict | None = None  # ZKP 公开实例（含 Poseidon 哈希）
+    proof_artifacts: dict | None = None
     metrics: dict
     fault_injected: bool
     proof_mode: str = "full"  # "full" or "light"
@@ -74,7 +75,8 @@ class InferResponse(BaseModel):
 # Worker 应用
 # ---------------------------------------------------------------------------
 
-def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> FastAPI:
+def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict,
+               artifacts_dir: str | None = None) -> FastAPI:
     """创建 FastAPI 应用。paths 由外部预初始化传入。"""
     app = FastAPI(title=f"Worker-{slice_id}")
 
@@ -82,7 +84,8 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
     onnx_abs = os.path.abspath(onnx_path)
     session = rt.InferenceSession(onnx_abs)
     input_name = session.get_inputs()[0].name
-    artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts", f"worker_{slice_id}")
+    if artifacts_dir is None:
+        artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts", f"worker_{slice_id}")
 
     state = {
         "paths": paths,
@@ -90,6 +93,7 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
         "session": session,
         "input_name": input_name,
         "slice_id": slice_id,
+        "request_cache": {},
     }
 
     @app.get("/health")
@@ -145,6 +149,26 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
         except OSError:
             pass
 
+        # ── Proof-bound output ──
+        # 从 proof 公开实例提取 rescaled_outputs 作为实际输出，
+        # 替代 onnxruntime 独立推理的浮点结果。
+        # 效果：proof 验证通过 ⟹ output_data 必然正确。
+        # 恶意 Worker 无法生成有效 proof 同时返回篡改的 output。
+        proof_ppi = (result.get("proof") or {}).get(
+            "pretty_public_inputs", {})
+        rescaled = proof_ppi.get("rescaled_outputs", [])
+        if rescaled:
+            proof_output = []
+            for group in rescaled:
+                if isinstance(group, list):
+                    for v in group:
+                        proof_output.append(float(v))
+                else:
+                    proof_output.append(float(group))
+            if proof_output:
+                output_data = proof_output
+                hash_out = sha256_of_list(output_data)
+
         forward_ms = (time.perf_counter() - t_start) * 1000
         result["metrics"]["forward_ms"] = round(forward_ms, 2)
         result["metrics"]["request_id"] = request_id
@@ -158,6 +182,7 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
             proof=result["proof"],
             verified=result["verified"],
             proof_instances=result.get("proof_instances"),
+            proof_artifacts=result.get("artifact_paths"),
             metrics=result["metrics"],
             fault_injected=fault_injected,
             proof_mode="full",
@@ -173,6 +198,19 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
 
         forward_ms = (time.perf_counter() - t_start) * 1000
 
+        # 缓存 light 请求，供 /re_prove 按 request_id 复核
+        state["request_cache"][request_id] = {
+            "input_data": list(req.input_data),
+            "hash_in": hash_in,
+            "hash_out": hash_out,
+            "output_data": output_data,
+            "timestamp": time.time(),
+        }
+        if len(state["request_cache"]) > 100:
+            oldest = min(state["request_cache"],
+                         key=lambda k: state["request_cache"][k]["timestamp"])
+            del state["request_cache"][oldest]
+
         return InferResponse(
             request_id=request_id,
             slice_id=state["slice_id"],
@@ -181,6 +219,7 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
             hash_out=hash_out,
             proof=None,
             verified=None,
+            proof_artifacts=None,
             metrics={
                 "proof_gen_ms": 0.0,
                 "verify_ms": 0.0,
@@ -196,12 +235,28 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
     @app.post("/re_prove")
     def re_prove(req: InferRequest):
         """
-        Master 随机挑战：对一个之前走 /infer_light 的请求重新做 ZKP prove。
-        防止 Worker 预计算或 replay 攻击。
+        Master 随机挑战：对之前 /infer_light 的历史请求重新做 ZKP prove。
+
+        严格模式：必须提供 request_id 且命中缓存，否则直接失败。
+        不再接受 fallback 到新输入——挑战必须是对历史请求的可追溯复核。
         """
-        request_id = str(uuid.uuid4())[:8]
-        data_path = os.path.join(state["artifacts_dir"], f"challenge_{request_id}.json")
-        write_input_json(req.input_data, data_path)
+        if not req.request_id or req.request_id not in state["request_cache"]:
+            return {
+                "error": "challenge_cache_miss",
+                "detail": f"request_id '{req.request_id}' not found in cache",
+                "slice_id": state["slice_id"],
+                "from_cache": False,
+                "cache_consistent": None,
+                "verified": False,
+            }
+
+        cached = state["request_cache"][req.request_id]
+        challenge_input = cached["input_data"]
+
+        challenge_id = str(uuid.uuid4())[:8]
+        data_path = os.path.join(state["artifacts_dir"],
+                                 f"challenge_{challenge_id}.json")
+        write_input_json(challenge_input, data_path)
 
         result = ezkl_prove(data_path, state["paths"], state["artifacts_dir"])
 
@@ -210,11 +265,18 @@ def create_app(slice_id: int, onnx_path: str, cal_path: str, paths: dict) -> Fas
         except OSError:
             pass
 
+        cache_consistent = (cached["hash_out"]
+                            == sha256_of_list(cached["output_data"]))
+
         return {
             "slice_id": state["slice_id"],
             "verified": result["verified"],
+            "proof": result["proof"],
             "proof_instances": result.get("proof_instances"),
+            "proof_artifacts": result.get("artifact_paths"),
             "metrics": result["metrics"],
+            "from_cache": cached is not None,
+            "cache_consistent": cache_consistent,
         }
 
     return app
@@ -239,7 +301,8 @@ def main():
     # EZKL 初始化在 uvicorn 启动前（无事件循环冲突）
     onnx_abs = os.path.abspath(args.onnx)
     cal_abs = os.path.abspath(args.cal)
-    artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts", f"worker_{args.slice_id}")
+    artifacts_dir = os.path.join(PROJECT_ROOT, "artifacts",
+                                   f"worker_{args.slice_id}_{args.visibility_mode}")
 
     print(f"[Worker {args.slice_id}] 初始化 EZKL (mode={args.visibility_mode})...")
     t0 = time.perf_counter()
@@ -248,7 +311,8 @@ def main():
     init_ms = (time.perf_counter() - t0) * 1000
     print(f"[Worker {args.slice_id}] EZKL 初始化完成 ({init_ms:.0f} ms)")
 
-    app = create_app(args.slice_id, args.onnx, args.cal, paths)
+    app = create_app(args.slice_id, args.onnx, args.cal, paths,
+                     artifacts_dir=artifacts_dir)
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 

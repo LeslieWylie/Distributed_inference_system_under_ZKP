@@ -65,8 +65,8 @@ def main():
             proc = subprocess.Popen(
                 cmd,
                 env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             worker_procs.append(proc)
 
@@ -75,7 +75,7 @@ def main():
         print("[Launcher] 这需要约 10-20 秒，请耐心等待...")
 
         # ── 启动 Master ──
-        master_cmd = [PYTHON, master_script]
+        master_cmd = [PYTHON, "-u", master_script]
         if args.fault_at is not None:
             master_cmd += ["--fault-at", str(args.fault_at)]
 

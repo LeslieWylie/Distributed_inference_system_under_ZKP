@@ -1,0 +1,218 @@
+\documentclass[10pt]{article}
+\usepackage{xltxtra}
+\usepackage{bookmark}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+\usepackage{url}
+\urlstyle{tt}
+\usepackage{multicol}
+\usepackage{xcolor}
+\usepackage{calc}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\usepackage{relsize}
+\usepackage{xspace}
+\usepackage{fontawesome}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{siunitx}
+\usepackage{amssymb}
+\usepackage{tabularx}
+\usepackage{array}
+
+% --- 基础设置 ---
+\CJKsetecglue{} 
+\setlength{\parindent}{0pt} 
+\pagenumbering{gobble} 
+\linespread{1.15} % 恢复舒朗行距
+
+% --- 列表设置 ---
+\setlist{noitemsep} 
+\setlist[itemize]{topsep=0.3em, itemsep=0.4em, parsep=0.1em, leftmargin=1.2em} 
+\setlist[enumerate]{topsep=0.3em, leftmargin=1.2em}
+
+% --- 标题设置 ---
+\definecolor{NPU_Blue}{RGB}{0, 80, 158} 
+
+% 标题格式：图标 + 文字
+\titleformat{\section}
+  {\Large\bfseries\raggedright}
+  {}{0em}
+  {}
+  [{\color{NPU_Blue}\titlerule[1pt]}] 
+\titlespacing*{\section}{0cm}{*0.8}{*0.5} 
+
+\titleformat{\subsection}
+  {\large\bfseries\raggedright}
+  {}{0em}
+  {}
+  []
+\titlespacing*{\subsection}{0cm}{*0.5}{*0.2}
+
+% --- 页面设置 ---
+\usepackage[
+    a4paper,
+    left=1.2cm,   
+    right=1.2cm,
+    top=2.2cm,    
+    bottom=1.5cm, 
+    nohead
+]{geometry}
+
+% --- 字体设置 (Windows 本地编译) ---
+\setmainfont{Arial} 
+\setCJKmainfont[
+    BoldFont={Microsoft YaHei}, 
+    ItalicFont={KaiTi} 
+]{Microsoft YaHei} 
+
+% --- 宏定义 ---
+\newcommand{\school}{计算机学院} 
+\newcommand{\contact}{
+    \small
+    \textcolor{white}{
+        \faEnvelope \enspace \href{mailto:wyl516@bupt.edu.cn}{wyl516@bupt.edu.cn}
+        \hspace{2em}
+        \faWechat \enspace yaole516
+        \hspace{2em}
+        \faPhone \enspace 153xxxx9153 
+        \hspace{2em}
+        \faGithub \enspace \href{https://github.com/LeslieWylie}{LeslieWylie}
+    }
+}
+
+\begin{document}
+
+% --- 页眉背景 ---
+\begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=north, inner sep=0pt](header) at (current page.north){
+        \includegraphics[width=\paperwidth, height=2.3cm]{images/header.png} 
+    };
+    \node[anchor=west](school_logo) at ($(header.west)+(0.5cm, 0)$){
+        \includegraphics[height=0.9cm]{images/npu_logo_1.png} 
+    };
+    \node[anchor=east](school_name) at(header.east){
+        \textcolor{white}{\textbf{\Large \school}} 
+        \hspace{0.5cm}
+    };
+\end{tikzpicture}
+
+% --- 个人信息区域 ---
+\begin{minipage}[t]{0.82\textwidth}
+    \section{\texorpdfstring{\makebox[\widthof{\faUser}][c]{\color{NPU_Blue}{\normalfont\faUser}}\quad 个人信息}{个人信息}}
+    \vspace{0.2em}
+    \renewcommand{\arraystretch}{1.1} 
+    \begin{tabularx}{\linewidth}{@{}p{4.5em}X p{4.5em}X@{}}
+        \textbf{姓名:} & 武垚乐 & \textbf{性别:} & 男 \\
+        \textbf{出生日期:} & 2004年10月16日 & \textbf{政治面貌:} & 团员 \\
+        \textbf{意向岗位:} & \textbf{软件开发工程师 (Java/后端/基础架构)} & \textbf{预计到岗:} & 即刻到岗 \\
+        \textbf{Github:} & LeslieWylie & & \\
+    \end{tabularx}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.15\textwidth}
+    \vspace{-1.5em} 
+    \includegraphics[width=\linewidth, clip]{images/wyl.jpg}
+\end{minipage}
+
+% --- 教育背景 ---
+\section{\texorpdfstring{\makebox[\widthof{\faGraduationCap}][c]{\color{NPU_Blue}{\normalfont\faGraduationCap}}\quad 教育背景}{教育背景}}
+\renewcommand{\arraystretch}{1.1} 
+\begin{tabularx}{\textwidth}{@{}l X r@{}}
+    \textbf{北京邮电大学} & 计算机科学与技术（本科） & 2022.09 -- 2026.07 (预计) \\
+\end{tabularx}
+\vspace{0.3em}
+\begin{itemize}
+    \item \textbf{核心课程：} 数据结构与算法、数据库系统原理、计算机网络、操作系统、分布式系统、编译原理、软件工程、机器学习、自然语言处理。
+    \item \textbf{英语能力：} CET-6，可流畅阅读英文技术文档与论文，具备良好的英文工程协作能力。
+\end{itemize}
+
+% --- 技能特长 ---
+\section{\texorpdfstring{\makebox[\widthof{\faWrench}][c]{\color{NPU_Blue}{\normalfont\faWrench}}\quad 专业技能}{专业技能}}
+\begin{itemize}
+    \item \textbf{Java 后端：} 精通 \textbf{Java Core}、\textbf{JVM} 调优与 \textbf{JUC} 并发编程；熟练掌握 \textbf{Spring Cloud Alibaba} 微服务生态；深入理解 \textbf{Netty} 网络模型。
+    \item \textbf{数据库与中间件：} 深入理解 \textbf{MySQL} 索引优化、MVCC 与事务机制；精通 \textbf{Redis} 缓存设计与持久化；熟悉 \textbf{Milvus} 向量数据库；了解 \textbf{MiniOB} 数据库内核。
+    \item \textbf{全栈与 AI 工程：} 熟练掌握 \textbf{React/Next.js/TypeScript} 前端与 \textbf{FastAPI/Prisma} 后端全栈开发；掌握 \textbf{LangChain/LangGraph} 编排与 \textbf{RAG} 架构；具备 \textbf{Azure} 云服务与 CI/CD 实战经验。
+    \item \textbf{工具与环境：} 熟练使用 \textbf{Git}、\textbf{Maven}、\textbf{Docker}、\textbf{Linux}；熟悉 \textbf{GitHub Actions} 自动化部署流程。
+\end{itemize}
+
+% --- 项目经历 ---
+\section{\texorpdfstring{\makebox[\widthof{\faLaptop}][c]{\color{NPU_Blue}{\normalfont\faLaptop}}\quad 项目经历}{项目经历}}
+
+% === 项目一 ===
+\subsection{\texorpdfstring{基于 Spring Cloud Alibaba 智能人才测评系统 \hfill \rm{\small 2024.10 -- 2025.01}}{基于 Spring Cloud Alibaba 智能人才测评系统}}
+\vspace{0.1em}
+\small{\textbf{角色：}后端负责人 \& 架构设计 \quad \textbf{技术栈：}Spring Cloud, Nacos, Sentinel, Redis, MySQL}
+\vspace{0.2em}
+\begin{itemize}
+    \item \textbf{微服务架构重构：} 针对单体架构在 LLM 阅卷时主线程阻塞的问题，重构为微服务架构。识别 CPU/IO 密集型任务并剥离为独立服务，基于 \textbf{Nacos} 实现服务注册发现，通过 \textbf{OpenFeign} 远程调用，彻底解决线程池耗尽痛点。
+    \item \textbf{高并发缓存设计：} 引入 \textbf{Redis Cache Aside} 缓解热点试卷读取压力。设计互斥锁机制解决缓存击穿，利用布隆过滤器防止缓存穿透，保障数据库在高并发下的稳定性。
+    \item \textbf{服务容错与治理：} 集成 \textbf{Sentinel} 设计熔断降级策略。当 AI 服务调用超时或异常比例飙升时自动触发兜底逻辑，确保核心业务链路 SLA 达到 99.9\%。
+\end{itemize}
+
+% === 项目二 ===
+\subsection{\texorpdfstring{DistriZKP: 面向分布式推理的零知识证明框架设计与低开销优化 \hfill \rm{\small 2025.02 -- 2026.03}}{DistriZKP: 面向分布式推理的零知识证明框架设计与低开销优化}}
+\vspace{0.1em}
+\small{\textbf{角色：}系统设计与核心开发 \quad \textbf{技术栈：}Python, FastAPI, ONNX, ONNXRuntime, EZKL, Halo2}
+\vspace{0.2em}
+\begin{itemize}
+    \item \textbf{分布式推理验证框架设计：} 面向 ``模型切片 + 不可信执行节点'' 场景，设计 \textbf{Master / Worker} 流水线架构，将 8 层全连接网络按层切分为 \textbf{2/4/8 个 ONNX 子模型} 并分配给独立 Worker 执行；Master 负责请求编排、切片串联、结果聚合与异常判定，形成了一个可运行的分布式推理验证原型。
+    \item \textbf{零知识证明工程落地：} 基于 \textbf{EZKL (Halo2 / PLONK / KZG)} 打通 \textbf{gen\_settings \rightarrow calibrate \rightarrow compile \rightarrow setup \rightarrow gen\_witness \rightarrow prove \rightarrow verify} 全流程，将每个模型切片编译为可验证电路；解决 Windows 环境下 HOME / 编码 / 事件循环冲突等问题，完成 proof、witness、SRS、VK/PK 等 artifact 的初始化与隔离管理。
+    \item \textbf{分层校验机制实现：} 实现 \textbf{输出完整性检查（L1）+ 相邻 proof 节点 linking（L2）+ 外部哈希链一致性（L3）+ 随机挑战 re\_prove} 的多层验证逻辑；其中 Master 对 proof 执行独立 verify，不信任 Worker 自报结果，并基于 challenge proof 的公开实例对 light 节点声称输出做交叉复核，可检测 \textbf{tamper / skip / random / replay} 等多类异常响应。
+    \item \textbf{低开销优化与实验分析：} 设计基于 \textbf{edge-cover} 的选择性验证策略，使用 \textbf{verify\_ratio} 与实际 proof 覆盖率联合控制验证成本，在 8 切片实验中相较全量证明将 proof 开销降低约 \textbf{68\%}；完成 \textbf{选择性验证、隐私模式（all\_public / hashed / private）、攻击场景、切片保真度与完整性检查机制} 等多组实验，系统记录证明时间、验证时间、端到端延迟、RSS 内存与检测结果等关键指标。
+\end{itemize}
+
+% === 项目三 ===
+\subsection{\texorpdfstring{基于 RAG 的半导体行业垂直知识库系统 \hfill \rm{\small 2024.11 -- 至今}}{基于 RAG 的半导体行业垂直知识库系统}}
+\vspace{0.1em}
+\small{\textbf{角色：}核心开发者 \quad \textbf{技术栈：}Python, LangGraph, Milvus, DeepSeek-V3}
+\vspace{0.2em}
+\begin{itemize}
+    \item \textbf{高精度混合检索：} 构建 \textbf{Milvus} 分布式向量集群，实现 ``Dense + Sparse'' 双路召回与重排序，将 Top-5 检索命中率提升至 \textbf{91\%}。
+    \item \textbf{非结构化数据 ETL：} 搭建私有化 \textbf{Unstructured} 服务解析研报中的复杂表格。采用 Semantic Chunking 策略，解决了传统固定分块导致的上下文断裂问题。
+    \item \textbf{动态工作流编排：} 基于 \textbf{LangGraph} 设计动态路由，根据意图自动分流至知识库或联网搜索，并调用 \textbf{DeepSeek-V3} 进行高性能推理，实现了低成本、高准确率的企业级问答服务。
+\end{itemize}
+
+% === 项目四 ===
+\subsection{\texorpdfstring{分布式数据库内核实现与 OceanBase 性能调优实战 \hfill \rm{\small 2023.12 -- 202X.xx}}{分布式数据库内核实现与 OceanBase 性能调优实战}}
+\vspace{0.1em}
+\small{\textbf{角色：}系统开发者 \quad \textbf{关键词：}C++, SQL Parser, B+ Tree, Transaction}
+\vspace{0.2em}
+\begin{itemize}
+    \item \textbf{SQL 调优与分析：} 熟练使用 \textbf{EXPLAIN} 分析执行计划，量化对比全表扫描与索引查找的 \textbf{I/O 成本}。通过实验验证索引设计缺陷，掌握基于 \textbf{CBO} 的调优思路。
+    \item \textbf{内核级实现：} 使用 C++ 实现 \textbf{SQL Parser} 与 \textbf{Optimizer}。优化底层存储，基于 \textbf{B+ Tree} 实现索引构建，设计基础 \textbf{Transaction} 机制，深入理解 \textbf{ACID} 特性实现。
+\end{itemize}
+
+% --- 实习经历 ---
+\section{\texorpdfstring{\makebox[\widthof{\faBriefcase}][c]{\color{NPU_Blue}{\normalfont\faBriefcase}}\quad 实习经历}{实习经历}}
+\subsection{\texorpdfstring{微软（Microsoft）| 全栈研发实习生 \hfill \rm{\small 2025.12 -- 至今}}{微软 全栈研发实习生}}
+\vspace{0.1em}
+\small{\textbf{项目：}DigitalEmployee — DevBrain 代码知识引擎 \quad \textbf{技术栈：}Next.js 14, React, TypeScript, Prisma, FastAPI, PostgreSQL, Azure}
+\vspace{0.2em}
+\begin{itemize}
+    \item \textbf{项目概述：} DigitalEmployee 是微软内部 \textbf{AI Coding Agent} 平台（89 位工程师使用、231 个 PR 合入生产），采用三层微服务架构：\textbf{Portal/API 层}（React 19 + FastAPI）负责任务管理与交互，\textbf{DevBrain 知识引擎层}（PageIndex 无向量 RAG + CodeGraphRAG 代码图谱 + Expert Knowledge 任务模式推荐）将巨型 Monorepo 中的隐性领域知识结构化为 Enhanced Context，\textbf{Runner 执行层}（AKS 临时 Pod + MCP 工具链）驱动 Agent 自主编码并交付 PR。
+    \item \textbf{全栈知识平台：} 基于 \textbf{Next.js 14 App Router + Prisma + Azure PostgreSQL} 从零搭建 DevBrain Portal，设计 Repository → Domain → Document → Codemap 四级知识对象模型与全套 CRUD API Routes；针对 PageIndex 多步推理的黑盒问题，构建 \textbf{Search Debug} 面板——集成 \textbf{Monaco Editor} 跨文件行级高亮映射 + 手写递归 \textbf{Trace Tree} 可视化回放推理路径，检索排错效率提升 \textbf{50\%+}。
+    \item \textbf{检索引擎核心开发：} 参与 \textbf{PageIndex} 无向量 RAG 引擎，实现 tree\_builder / tree\_searcher 层进式搜索与 \textbf{LLM-based pre-screening} 替代词法预筛大幅提升召回精度；构建统一 Search API 支持 Codemap + 知识库联合检索，平均响应 16--19s，Top-6 文档全相关。
+    \item \textbf{代码图谱与 Agent 知识注入：} 参与 \textbf{CodeGraphRAG}，基于 tree-sitter AST 实现多语言 FileSummarizer 与跨文件符号关系抽取，搭建 Workspace 异步同步管线支撑百 MB 级增量解析；开发 \textbf{CodeTravel}（ReAct 模式自主代码探索 → 结构化 Codemap 生成）并接入 \textbf{Agent Skills} 运行时知识注入体系。
+    \item \textbf{可观测性与工程化：} 集成 \textbf{Azure GenAI Observability} 对 Agent LLM 调用实现端到端打点与 A/B 评测，持续优化召回率与 token 消耗；主导认证迁移至 \textbf{ConfidentialClient + FIC + Entra ID OIDC}（httpOnly Session Cookie 解决 SSR 会话穿透），维护 \textbf{GitHub Actions} CI/CD → Azure App Service 自动化部署流。
+\end{itemize}
+
+% --- 荣誉奖项与校园经历 ---
+\section{\texorpdfstring{\makebox[\widthof{\faStar}][c]{\color{NPU_Blue}{\normalfont\faStar}}\quad 荣誉奖项与校园经历}{荣誉奖项与校园经历}}
+\begin{itemize}
+    \item \textbf{奖项荣誉：} Datawhale社区 \textbf{机器学习与NLP赛道一等奖}；国家励志奖学金；北京市三好学生；腾讯云从业者认证。
+    \item \textbf{学生工作：} 连续三年担任\textbf{计算机学院大班团支书}，主导策划多项年级活动，具备优秀的团队协作与组织能力。
+\end{itemize}
+
+% --- 页脚背景 ---
+\begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=south, inner sep=0pt](footer) at (current page.south){
+        \includegraphics[width=\paperwidth, height=1.2cm]{images/footer.png}
+    };
+    \node[anchor=center] at(footer.center){\contact};
+\end{tikzpicture}
+
+\end{document}

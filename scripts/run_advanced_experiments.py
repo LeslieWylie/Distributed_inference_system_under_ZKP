@@ -1,9 +1,13 @@
 """
-P1+P2+P3 综合实验脚本
+P1+P3 综合实验脚本
+
+⚠ 该脚本使用简化评估管线（覆盖 L1 + L3 + edge-cover 选点），
+   未走 Master 完整逻辑（无独立 proof verify、无 L2 linking、无随机挑战）。
+   用于选择性验证开销评估和 L1/L3 检测能力对比。
 
 实验矩阵:
-  P1 选择性验证: {4,8 切片} × {1.0, 0.5, 0.25 验证率} × {正常, tamper故障}
-  P3 多攻击场景: {4 切片} × {tamper, skip, random, replay} × {1.0, 0.5 验证率}
+  P1 选择性验证: {4,8 切片} × {1.0, 0.5, 0.25 请求验证率} × {正常, tamper故障}
+  P3 多攻击场景: {4 切片} × {tamper, skip, random, replay} × {1.0, 0.5 请求验证率}
 
 用法:
     python run_advanced_experiments.py
@@ -20,9 +24,10 @@ import requests
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-PYTHON = r"C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe"
+PYTHON = sys.executable
 
 from common.utils import sha256_of_list
+from distributed.master import _select_verified_slices
 
 
 # ---------------------------------------------------------------------------
@@ -95,20 +100,10 @@ def run_single_pipeline(
     verify_ratio: float = 1.0,
 ) -> dict:
     """执行一次完整的流水线推理并返回指标。"""
-    import random as _rand
-
     num_slices = len(workers)
 
-    # 选择验证切片（首尾必选 + 中间随机）
-    all_ids = [w["slice_id"] for w in workers]
-    if verify_ratio >= 1.0:
-        verified_set = set(all_ids)
-    else:
-        must = {all_ids[0], all_ids[-1]}
-        middle = [i for i in all_ids if i not in must]
-        k = max(0, round(len(all_ids) * verify_ratio) - len(must))
-        k = min(k, len(middle))
-        verified_set = must | set(_rand.sample(middle, k))
+    # 使用 master 的统一选择策略（edge_cover）
+    verified_set = _select_verified_slices(num_slices, verify_ratio)
 
     e2e_start = time.perf_counter()
     current_input = initial_input
@@ -126,7 +121,8 @@ def run_single_pipeline(
 
         resp = requests.post(
             f"{w['url']}{endpoint}",
-            json={"input_data": current_input, "request_id": f"exp-{sid}"},
+            json={"input_data": current_input,
+                  "request_id": f"exp-{sid}-{int(time.time()*1000)}"},
             params={"fault_type": ft},
             timeout=180,
         )
@@ -156,10 +152,19 @@ def run_single_pipeline(
     total_verify_ms = sum(r["metrics"]["verify_ms"] for r in results)
     max_rss = max(r["metrics"]["peak_rss_mb"] for r in results)
 
+    # proof-bound output 预防：proof 节点上的篡改被 proof 绑定的输出预防
+    fault_prevented = False
+    if fault_at is not None and fault_at not in malicious_nodes:
+        for r in results:
+            if r.get("slice_id") == fault_at and r.get("fault_injected"):
+                fault_prevented = True
+
     if fault_at is not None:
-        detection_accuracy = 1.0 if fault_at in malicious_nodes else 0.0
+        detection_accuracy = 1.0 if (fault_at in malicious_nodes or fault_prevented) else 0.0
     else:
         detection_accuracy = 1.0 if len(malicious_nodes) == 0 else 0.0
+
+    actual_proof_fraction = len(verified_set) / len(workers) if workers else 0
 
     return {
         "e2e_latency_ms": round(e2e_ms, 2),
@@ -168,12 +173,15 @@ def run_single_pipeline(
         "peak_rss_mb": round(max_rss, 2),
         "hash_chain_ok": hash_chain_ok,
         "detection_accuracy": detection_accuracy,
+        "fault_prevented": fault_prevented,
         "fault_at": fault_at,
         "fault_type": fault_type if fault_at else None,
         "verify_ratio": verify_ratio,
+        "actual_proof_fraction": round(actual_proof_fraction, 4),
         "verified_slices": sorted(verified_set),
         "num_slices": len(workers),
         "malicious_detected": malicious_nodes,
+        "evaluation_scope": "simplified_L1_L3_with_edge_cover",
     }
 
 
