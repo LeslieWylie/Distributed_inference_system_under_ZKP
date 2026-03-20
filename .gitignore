@@ -26,6 +26,11 @@ metrics/exp_log.txt
 # Debug logs and temp files
 *.log
 *_pid.txt
+terminal_log.txt
+
+# Temporary test scripts
+v2/experiments/quick_test*.py
+v2/metrics/phase_a_quick_test.json
 
 # IDE
 .vscode/

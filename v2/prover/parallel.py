@@ -19,12 +19,16 @@ PYTHON = sys.executable
 def prove_slices_parallel(
     tasks: list[dict],
     max_workers: int = 2,
+    timeout_seconds: int = 300,
 ) -> dict[int, dict]:
     """
     并行 proving 多个切片（子进程级真正 CPU 并行）。
 
     每个 task 包含:
       slice_id, input_tensor, compiled_path, pk_path, srs_path, work_dir, tag
+
+    参数:
+      timeout_seconds: 单个子进程的最大允许时间（默认 300s）
 
     返回: {slice_id: prove_result_dict}
     """
@@ -91,6 +95,24 @@ def prove_slices_parallel(
         still_active = []
         for item in active:
             ret = item["proc"].poll()
+            wall_s = time.perf_counter() - item["start_time"]
+
+            # P3-FIX: 超时检查 — 杀死挂起的子进程
+            if ret is None and wall_s > timeout_seconds:
+                item["proc"].kill()
+                item["proc"].wait()
+                sid = item["slice_id"]
+                results[sid] = {
+                    "success": False,
+                    "error": f"timeout after {timeout_seconds}s",
+                    "subprocess_wall_ms": round(wall_s * 1000, 2),
+                }
+                try:
+                    os.remove(item["input_json_path"])
+                except OSError:
+                    pass
+                continue
+
             if ret is not None:
                 # 进程结束，读取结果
                 wall_ms = (time.perf_counter() - item["start_time"]) * 1000

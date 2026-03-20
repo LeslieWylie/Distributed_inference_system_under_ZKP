@@ -88,6 +88,8 @@ def run_deferred_pipeline(
         sid = artifact.slice_id
         t0 = time.perf_counter()
 
+        # P2-NOTE: compute_commitment 仅用于审计日志和请求追踪，
+        # 不作为安全验证的依据。安全绑定来自 EZKL proof 的公开实例 (rescaled values)。
         input_commit = compute_commitment(
             req_id, sid, artifact.model_digest, current_input,
         )
@@ -113,6 +115,7 @@ def run_deferred_pipeline(
             elif fault_type == "replay":
                 output_tensor = [0.42] * len(output_tensor)
 
+        # P2-NOTE: 审计承诺，非安全验证用
         output_commit = compute_commitment(
             req_id, sid, artifact.model_digest, output_tensor,
         )

@@ -100,10 +100,26 @@ In `public` visibility mode, EZKL binds `rescaled_inputs` and `rescaled_outputs`
 as public instances in the proof. `ezkl.verify()` cryptographically confirms these
 values are consistent with the proven computation.
 
-Adjacent linking uses approximate equality (ε = 0.01) because independent
-quantization calibration per slice may introduce sub-LSB differences for the
-same floating-point tensor. The threshold is set to cover quantization precision
-(~1/2^13 ≈ 0.0001) while remaining far below any meaningful attack magnitude.
+Adjacent linking uses approximate equality with **dynamic epsilon budget**:
+- Base budget: `BASE_EPSILON = 0.01`
+- Per-edge threshold: `LINK_EPSILON = BASE_EPSILON / (n-1)` where n = number of slices
+- Accumulated chain budget: total accumulated diff must stay < `BASE_EPSILON`
+- Terminal binding: `TERMINAL_EPSILON = BASE_EPSILON / n`
+
+This dynamic scheme prevents the **epsilon accumulation vulnerability**: an attacker
+cannot inject sub-threshold perturbations across many edges to accumulate undetected
+distortion. The total chain budget is bounded at `BASE_EPSILON` regardless of slice count.
+
+**Note on commitment semantics**: The `compute_commitment()` function (SHA-256 with
+domain separation) is used for audit logging and request tracking. The actual security
+binding comes from EZKL proof public instances (rescaled values), not from external
+SHA-256 commitments. Future upgrade to `polycommit` + `swap_proof_commitments()`
+will achieve cryptographically exact linking (no epsilon needed).
+
+**Relationship to NanoZK**: NanoZK uses exact SHA-256 commitment matching between
+layers. Our system uses approximate rescaled-value comparison due to EZKL's independent
+per-slice quantization calibration. This is an engineering limitation, not a fundamental
+design choice. The polycommit upgrade path eliminates this gap.
 
 ## 7. Security Guarantee
 

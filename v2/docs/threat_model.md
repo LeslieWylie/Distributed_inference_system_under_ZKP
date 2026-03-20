@@ -43,6 +43,12 @@ For each certified request:
 3. **Availability**: A malicious Worker can refuse service.
 4. **Master integrity**: If Master colludes with Workers, the guarantee breaks.
    Mitigation: on-chain verification or independent auditor (future work).
+5. **Sub-epsilon attacks**: Perturbations smaller than `BASE_EPSILON / (n-1)` per edge
+   are within the quantization noise floor and not distinguishable from legitimate
+   calibration variance. The total accumulated distortion is bounded at `BASE_EPSILON = 0.01`.
+6. **Exact commitment chain**: Current linking uses rescaled float comparison,
+   not cryptographically exact commitment matching (unlike NanoZK's SHA-256 chain).
+   Upgrade path: `polycommit` + `swap_proof_commitments()`.
 
 ## 5. Attack Detection Matrix (Empirically Verified)
 

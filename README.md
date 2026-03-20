@@ -1,70 +1,94 @@
 # 面向分布式推理的零知识证明框架
 
-> Distributed Inference System under Zero-Knowledge Proofs
+> Distributed Inference System under Zero-Knowledge Proofs  
+> Deferred Certification Architecture for End-to-End Verifiable Distributed Inference
 
-基于 DSperse 架构的分布式推理分层可验证性研究原型。将深度学习模型按层切片分配给多个 Worker 节点推理，每个 Worker 用 EZKL 生成局部 ZKP 证明，Master 通过分层校验体系（外部哈希 + 相邻 proof 间 ZKP Linking + 哈希链 + 随机挑战）验证推理正确性并检测恶意节点。
+## 系统定位
+
+本项目研究如何在分布式切片推理中实现端到端可验证性。系统将深度学习模型按层切片分配给多个 Worker，每个切片最终都生成 EZKL ZKP 证明，由独立 Verifier 通过相邻切片输入/输出公开实例的一致性检查（commitment linking）和终端绑定完成全链路认证。
+
+**核心思想：所有切片最终都被证明，证明不阻塞执行。**
+
+系统区分两类输出：
+- **Provisional Output**：在线推理完成后立即返回（~10ms），未经认证
+- **Certified Output**：全部 proof 验证通过 + commitment chain 闭合后，升级为认证结果
 
 ## 快速开始
 
 ### 环境准备
 
 ```powershell
-# 1. 安装 Miniconda
 winget install --id Anaconda.Miniconda3 -e --silent
-
-# 2. 安装依赖
-$PYTHON = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
-& $PYTHON -m pip install ezkl torch onnx onnxscript psutil fastapi uvicorn requests onnxruntime
+$PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
+& $PY -m pip install ezkl torch onnx onnxscript psutil fastapi uvicorn requests onnxruntime
 ```
 
-### 运行
+### 运行 (v2 新架构)
 
 ```powershell
 $env:PYTHONIOENCODING = "utf-8"
-$PYTHON = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
+$PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 
+# Phase A：同步全链路认证 (6 种攻击场景, 全部检出)
+& $PY -u -m v2.experiments.e2e_certified --slices 4 --rebuild
+
+# Phase B/C：执行-证明解耦 + 子进程并行 proving
+& $PY -u -m v2.experiments.deferred_certified
+
+# Fidelity 分层实验 (F1 切片 + F2 量化 + F3 认证)
+& $PY -u -m v2.experiments.fidelity
+
+# 多切片可扩展性 (2/4/8 slices)
+& $PY -u -m v2.experiments.scalability
+```
+
+### 运行 (v1 旧架构 baseline)
+
+```powershell
 # 阶段 1：单机验证
-& $PYTHON -u scripts/run_single_machine_demo.py
+& $PY -u scripts/run_single_machine_demo.py
 
 # 阶段 2：分布式推理 (2 Workers + Master)
-& $PYTHON -u scripts/run_stage2.py
+& $PY -u scripts/run_stage2.py
 
-# 阶段 3：实验 (2/4/8 切片 × 正常/故障)
-& $PYTHON -u scripts/run_experiments.py
-
-# P1+P3：选择性验证 + 多攻击实验
-& $PYTHON -u scripts/run_advanced_experiments.py
-
-# P2：隐私模式对比
-& $PYTHON -u scripts/run_p2_experiment.py
+# 阶段 3：选择性验证实验
+& $PY -u scripts/run_experiments.py
 ```
 
 ## 项目结构
 
 ```
-├── common/                  # 共享工具层
-│   └── utils.py             #   EZKL 初始化/prove/verify、哈希、内存监测
+├── v2/                              ← 新架构 (Deferred Certification)
+│   ├── common/
+│   │   ├── types.py                 #   RequestStatus, SliceArtifact, Certificate
+│   │   ├── commitments.py           #   SHA-256 域分离承诺
+│   │   └── logging.py               #   JSON Lines 审计日志
+│   ├── compile/
+│   │   └── build_circuits.py        #   ONNX 切片 + EZKL 编译 + registry
+│   ├── prover/
+│   │   ├── ezkl_adapter.py          #   prove_slice (仅 proving, 不含 verify)
+│   │   ├── parallel.py              #   子进程并行 proving
+│   │   └── prove_worker.py          #   子进程入口
+│   ├── verifier/
+│   │   ├── verify_single.py         #   独立单片验证
+│   │   └── verify_chain.py          #   全链路 linking + 终端绑定 + 证书
+│   ├── execution/
+│   │   ├── pipeline.py              #   Phase A: 同步全链路
+│   │   └── deferred_pipeline.py     #   Phase B/C: 执行-证明解耦
+│   ├── experiments/                 #   G2/G3/G4/F1-F3 实验
+│   ├── docs/
+│   │   ├── protocol.md              #   正式协议文档
+│   │   └── threat_model.md          #   威胁模型
+│   └── metrics/                     #   实验结果 JSON
 │
-├── distributed/             # 分布式推理层
-│   ├── worker.py            #   Worker FastAPI 服务 (/infer, /infer_light)
-│   └── master.py            #   Master 调度 + 三层校验
+├── distributed/                     ← v1 旧架构 (baseline 对照)
+│   ├── worker.py                    #   Worker FastAPI (选择性验证)
+│   └── master.py                    #   Master 调度 + 三层校验
 │
-├── models/                  # 模型层
-│   ├── full_model.py        #   阶段1 两层FC模型
-│   └── configurable_model.py#   可配置N层模型 (支持2/4/8切片)
-│
-├── scripts/                 # 运行脚本
-│   ├── run_single_machine_demo.py    # 阶段1
-│   ├── run_stage2.py                 # 阶段2 一键启动
-│   ├── run_experiments.py            # 阶段3 基础实验 (简化管线, L1+L3)
-│   ├── run_advanced_experiments.py   # P1+P3 选择性验证+多攻击 (简化管线)
-│   ├── run_p2_experiment.py          # P2 隐私模式对比
-│   └── run_p4_p6_experiment.py       # P4保真度+P6完整性检查对比
-│
-├── metrics/                 # 实验结果 (JSON)
-├── survey/                  # 开题报告 + 参考文献
-├── DEVELOPMENT_REPORT.md    # 环境配置指南
-└── PROJECT_PLAN.md          # 完整开发计划 + 安全模型
+├── models/                          #   模型定义 + ONNX 切片
+├── scripts/                         #   v1 旧实验脚本
+├── docs/                            #   设计文档 + 重构说明
+└── survey/                          #   开题报告 + 文献资料
 ```
 
 ## 技术栈
@@ -81,38 +105,67 @@ $PYTHON = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 
 ## 实验结果摘要
 
-### 选择性验证 (P1)
+### v2 新架构实验
 
-| 切片数 | 请求验证率 | 端到端(ms) | 开销降低 | 安全结果 |
-|:---:|:---:|---:|:---:|:---:|
-| 8 | 100% | 15,526 | — | 篡改被预防 |
-| 8 | 50% | 9,367 | **39%** | 篡改被预防 |
-| 8 | 25% | 9,087 | **41%** | 篡改被预防 |
+#### G2 协议正确性 — 6/6 PASS
 
-> 注：“请求验证率”为 verify_ratio 参数，实际 proof 覆盖率受 edge-cover 策略影响可能更高。proof 节点上的篡改被 proof-bound output 机制预防（输出从 proof 公开实例提取，篡改无法传播）。
+| 攻击 | 状态 | Provisional | Certification |
+|---|:---:|---:|---:|
+| normal | **certified** | 37ms | 4680ms |
+| tamper_last | **invalid** | 66ms | 5155ms |
+| tamper_mid | **invalid** | 103ms | 5019ms |
+| skip | **invalid** | 8ms | 5527ms |
+| random | **invalid** | 10ms | 5070ms |
+| replay | **invalid** | 9ms | 5207ms |
 
-### 隐私模式 (P2)
+#### G3 延迟分解 — 子进程并行
 
-| 模式 | proof(ms) | 开销倍数 |
-|:---:|---:|:---:|
-| all_public | 6,886 | 1.0× |
-| hashed (Poseidon) | 11,108 | 1.61× |
-| private | 6,652 | 0.97× |
+| 并行度 | Proving | Total | 加速比 |
+|:---:|---:|---:|:---:|
+| 1w | 6344ms | 6441ms | 1.0× |
+| 2w | 5078ms | 5174ms | 1.25× |
+| 4w | 4469ms | 4562ms | **1.42×** |
 
-### 多攻击场景 (P3) — proof 节点上全部被预防
+#### Fidelity（严格区分 circuit correctness 与 float fidelity）
 
-tamper / skip / random / replay × {100%, 50%} 请求验证率
+| 层级 | Max Abs Error | 说明 |
+|---|---|---|
+| F1 Partition | **0.0** | 切片保持函数组合 |
+| F2 Quantization | **~1.5×10⁻⁸** | EZKL 量化误差极小 |
+| F3 Certified | **~1.5×10⁻⁸** | 认证输出 ≈ 浮点基线 |
 
-> proof-bound output 机制：证明节点上的篡改被预防（输出从 proof 提取，篡改无法传播）。光节点上的篡改被 L1 检测 + 随机挑战。
+#### G4 可扩展性 (2/4/8 slices)
+
+| Slices | Proof | Verify | Tamper |
+|:---:|---:|---:|:---:|
+| 2 | 2.8s | 40ms | detected |
+| 4 | 6.8s | 83ms | detected |
+| 8 | 12.7s | 168ms | detected |
+
+### v1 旧架构 Baseline
+
+> 以下为旧系统数据，仅作对照。旧系统允许部分切片不出 proof，不满足 end-to-end 可验证要求。
+
+| 切片数 | 验证率 | 端到端(ms) | 安全结果 |
+|:---:|:---:|---:|:---:|
+| 8 | 100% | 15,526 | 篡改被预防 |
+| 8 | 50% | 9,367 | 篡改被预防 |
+| 8 | 25% | 9,087 | 篡改被预防 |
 
 ## 文档
 
-- [DEVELOPMENT_REPORT.md](DEVELOPMENT_REPORT.md) — 环境配置、使用说明、FAQ
-- [PROJECT_PLAN.md](PROJECT_PLAN.md) — 开发计划、安全模型、检测概率推导、威胁模型
-- [survey/reference/RESEARCH_SYNTHESIS_2026-03-18.md](survey/reference/RESEARCH_SYNTHESIS_2026-03-18.md) — 外部论文、本地资料与当前实现边界的综合整理
+- [v2/docs/protocol.md](v2/docs/protocol.md) — 正式协议文档 (End-to-End Statement, 请求状态机)
+- [v2/docs/threat_model.md](v2/docs/threat_model.md) — 威胁模型 (对手能力, 信任假设, 攻击检测矩阵)
+- [docs/refactor/REFACTORING_CHANGELOG.md](docs/refactor/REFACTORING_CHANGELOG.md) — 重构变更日志
+- [DEVELOPMENT_REPORT.md](DEVELOPMENT_REPORT.md) — 环境配置指南
+- [PROJECT_PLAN.md](PROJECT_PLAN.md) — 完整开发计划 + 安全模型
 
-## 参考
+## 参考文献
 
-- [DSperse: Targeted Verification in ZKML](https://arxiv.org/abs/2508.06972)
-- [EZKL Documentation](https://docs.ezkl.xyz/)
-- [EZKL Python Bindings](https://pythonbindings.ezkl.xyz/en/stable/)
+- [NanoZK: Layerwise ZKP for LLM Inference](https://arxiv.org/abs/2603.18046) — 逐层 proof + commitment chain
+- [DSperse: Targeted Verification in ZKML](https://arxiv.org/abs/2508.06972) — 选择性验证 baseline
+- [Non-Composability of Layerwise Approximate Verification](https://arxiv.org/abs/2602.15756) — 近似层验证不可组合
+- [Artemis: CP-SNARK for zkML](https://arxiv.org/abs/2409.12055) — 低成本 commitment linking
+- [zkGPT](https://www.usenix.org/system/files/usenixsecurity25-qu-zkgpt.pdf) — 单体 LLM 证明
+- [EZKL Documentation](https://docs.ezkl.xyz/) / [Python Bindings](https://pythonbindings.ezkl.xyz/en/stable/)
+- [EZKL Proof Splitting Blog](https://blog.ezkl.xyz/post/splitting/) — split proof + commitment stitching

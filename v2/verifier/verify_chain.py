@@ -119,8 +119,16 @@ def verify_chain(
     #   public 模式下 rescaled 值受 proof soundness 密码学绑定，
     #   不可伪造 (ezkl.verify 已确认 proof 对这些 public instances 成立)
     #   由于独立量化，同一张量在两个电路中的 rescaled 值可能有微小差异，
-    #   因此使用近似比较 (epsilon = 0.01, 覆盖量化误差 ~1/2^13)
-    LINK_EPSILON = 0.01
+    #   因此使用近似比较。
+    #
+    #   P1-FIX: 使用动态 epsilon = BASE_EPSILON / num_slices
+    #   防止逐边 ε 累积: 攻击者每条边注入 ≤ ε 的扰动，n 条边累积 n·ε 不受控。
+    #   动态 epsilon 确保全链累积上界 ≤ BASE_EPSILON。
+    BASE_EPSILON = 0.01
+    num_links = max(len(single_results) - 1, 1)
+    LINK_EPSILON = BASE_EPSILON / num_links
+    accumulated_diff = 0.0
+
     for i in range(len(single_results) - 1):
         curr = single_results[i]
         next_ = single_results[i + 1]
@@ -128,6 +136,7 @@ def verify_chain(
         curr_out = curr.output_commit_from_proof
         next_in = next_.input_commit_from_proof
 
+        # P4-FIX: 显式检查空值
         if curr_out is None or next_in is None:
             link_failures.append({
                 "edge": [proof_jobs[i].slice_id, proof_jobs[i + 1].slice_id],
@@ -137,10 +146,18 @@ def verify_chain(
             })
             continue
 
-        # 近似比较 rescaled float 值
         try:
             out_vals = _flatten_nested(json.loads(curr_out))
             in_vals = _flatten_nested(json.loads(next_in))
+
+            # P4-FIX: 显式检查空列表
+            if len(out_vals) == 0 or len(in_vals) == 0:
+                link_failures.append({
+                    "edge": [proof_jobs[i].slice_id, proof_jobs[i + 1].slice_id],
+                    "reason": f"empty rescaled values: out={len(out_vals)}, in={len(in_vals)}",
+                })
+                continue
+
             if len(out_vals) != len(in_vals):
                 link_failures.append({
                     "edge": [proof_jobs[i].slice_id, proof_jobs[i + 1].slice_id],
@@ -151,10 +168,14 @@ def verify_chain(
                     abs(float(a) - float(b))
                     for a, b in zip(out_vals, in_vals)
                 )
+                accumulated_diff += max_diff
+
+                # 逐边阈值检查 (动态 ε)
                 if max_diff > LINK_EPSILON:
                     link_failures.append({
                         "edge": [proof_jobs[i].slice_id, proof_jobs[i + 1].slice_id],
-                        "reason": f"rescaled value mismatch: max_diff={max_diff:.6f}",
+                        "reason": f"rescaled value mismatch: max_diff={max_diff:.6f} "
+                                  f"(threshold={LINK_EPSILON:.6f})",
                     })
         except (json.JSONDecodeError, TypeError, ValueError) as e:
             link_failures.append({
@@ -162,16 +183,31 @@ def verify_chain(
                 "reason": f"linking comparison error: {e}",
             })
 
+    # P1-FIX: 额外全链累积检查
+    if accumulated_diff > BASE_EPSILON:
+        link_failures.append({
+            "edge": ["chain", "accumulated"],
+            "reason": f"accumulated linking error {accumulated_diff:.6f} "
+                      f"exceeds chain budget {BASE_EPSILON}",
+        })
+
     # Step 3: 终端绑定 — 最后一片 proof 的 rescaled_outputs ≈ provisional output
     #   若 provisional_output 与 proof 内输出不一致，说明最后一片数据被篡改
-    #   阈值 0.01：覆盖 EZKL 量化精度 (~1/2^13 ≈ 0.0001)，远小于任何有意义的攻击
-    TERMINAL_EPSILON = 0.01
+    #   P1-FIX: 终端阈值也按链长度缩放
+    TERMINAL_EPSILON = BASE_EPSILON / max(len(single_results), 1)
     if provisional_output is not None and single_results:
         last_out_str = single_results[-1].output_commit_from_proof
         if last_out_str is not None:
             try:
                 proof_out_vals = _flatten_nested(json.loads(last_out_str))
-                if len(proof_out_vals) == len(provisional_output):
+
+                # P4-FIX: 显式检查空值
+                if len(proof_out_vals) == 0:
+                    link_failures.append({
+                        "edge": [proof_jobs[-1].slice_id, "terminal"],
+                        "reason": "empty proof output rescaled values",
+                    })
+                elif len(proof_out_vals) == len(provisional_output):
                     terminal_max_diff = max(
                         abs(float(a) - float(b))
                         for a, b in zip(proof_out_vals, provisional_output)

@@ -76,7 +76,7 @@ def run_certified_pipeline(
         sid = artifact.slice_id
         slice_start = time.perf_counter()
 
-        # ── 1. 计算输入 commitment ──
+        # ── 1. 计算输入 commitment (审计用，安全绑定由 proof 公开实例提供) ──
         input_commit = compute_commitment(
             req_id, sid, artifact.model_digest, current_input,
         )
@@ -102,7 +102,7 @@ def run_certified_pipeline(
             elif fault_type == "replay":
                 output_tensor = [0.42] * len(output_tensor)
 
-        # ── 3. 计算输出 commitment ──
+        # ── 3. 计算输出 commitment (审计用) ──
         output_commit = compute_commitment(
             req_id, sid, artifact.model_digest, output_tensor,
         )
