@@ -19,6 +19,7 @@ from v2.common.types import (
     SingleVerifyResult,
     ChainVerifyResult,
     Certificate,
+    ClientVerificationResult,
     RequestStatus,
     ProofJob,
 )
@@ -304,4 +305,21 @@ def issue_certificate(
             "proof_failures": chain_result.proof_failures,
             "verify_ms_total": round(verify_ms_total, 2),
         },
+    )
+
+
+def build_client_verification_result(
+    chain_result: ChainVerifyResult,
+    verify_ms_total: float,
+) -> ClientVerificationResult:
+    """从链路验证结果构建客户端独立验证结果。"""
+    failures = list(chain_result.proof_failures) + list(chain_result.link_failures)
+    return ClientVerificationResult(
+        req_id=chain_result.req_id,
+        status=chain_result.status.value,
+        all_single_proofs_verified=chain_result.all_single_proofs_verified,
+        all_links_verified=chain_result.all_links_verified,
+        final_output_commit=chain_result.final_output_commit,
+        failure_reasons=failures,
+        metrics={"verification_ms": round(verify_ms_total, 2)},
     )

@@ -6,13 +6,14 @@ The system assumes the following adversary capabilities:
 
 | Capability | Assumed? | Mitigation |
 |---|:---:|---|
-| Return forged output from any slice | ✓ | Proof soundness + terminal binding |
+| Return forged output from any slice | ✓ | Proof soundness + terminal binding (proof generated at Worker, not Master) |
 | Forge SHA-256 hashes | ✓ | Proof binds public instances, not external hashes |
-| Produce valid proof but send fake output downstream | ✓ | Adjacent linking: rescaled_outputs[i] ≈ rescaled_inputs[i+1] |
+| Produce valid proof but send fake output downstream | ✓ | Adjacent linking: rescaled_outputs[π_i] ≈ rescaled_inputs[π_{i+1}]. Both values extracted from Worker-generated proofs by independent Verifier |
 | Collude with adjacent Worker | ✓ | Both slices must produce individually valid proofs; linking verified independently |
 | Replay old request outputs | ✓ | req_id in commitment provides domain separation |
-| Claim `verified=True` without running verifier | ✓ | Worker never self-declares correctness; Verifier is independent |
+| Claim `verified=True` without running verifier | ✓ | Worker generates proof only; verification is independent |
 | Replace slice model or quantization settings | ✓ | model_digest re-computed and checked at verification time |
+| Return tampered output with honest proof | ✓ | Terminal binding: Verifier extracts rescaled_outputs from proof, compares to Worker-declared output. Mismatch → INVALID |
 | Refuse to compute (availability attack) | ✓ | Out of scope — correctness guarantee, not availability |
 
 ## 2. Trust Assumptions
@@ -21,10 +22,13 @@ The system assumes the following adversary capabilities:
 |---|---|---|
 | ZKP backend (EZKL/Halo2) | Computationally sound | Standard cryptographic assumption |
 | SHA-256 | Collision-resistant | Standard |
-| Master/Verifier | Trusted | Centralized trust anchor; future: on-chain or multi-verifier |
+| Client-side Verifier | Trusted | Local verification program; the only final trust authority |
+| Coordinator | **Untrusted** | Untrusted bundle assembler; its advisory is non-authoritative |
 | Artifact Registry | Tamper-proof after setup | Static VK/PK/SRS/model_digest fixed at compile time |
-| Execution Workers | **Untrusted** | May be malicious; correctness enforced by proof |
-| Network | Authenticated channels | Master ↔ Worker communication integrity assumed |
+| Prover-Workers | **Untrusted** | May be malicious; correctness enforced by proof soundness + linking |
+| Network | **Untrusted** | Transport integrity not assumed; client verifies proof evidence directly |
+
+**Minimal trust root**: client local verification program + registry artifacts + cryptographic assumptions.
 
 ## 3. What the System Proves
 
@@ -52,14 +56,23 @@ For each certified request:
 
 ## 5. Attack Detection Matrix (Empirically Verified)
 
-| Attack | Detection Mechanism | Verified |
-|---|---|:---:|
-| tamper (output + 999.0) | Terminal binding / adjacent linking | ✓ 6/6 |
-| skip (all zeros) | Terminal binding | ✓ |
-| random (uniform noise) | Terminal binding | ✓ |
-| replay (fixed value) | Terminal binding | ✓ |
-| tamper at middle slice | Adjacent linking (edge mismatch) | ✓ |
-| model substitution | model_digest re-verification | ✓ (by construction) |
+| Attack | Detection Mechanism | Architecture | Verified |
+|---|---|---|:---:|
+| tamper (output + 999.0) | Terminal binding: proof rescaled_outputs ≠ declared output | Prover-Worker | ✓ |
+| skip (all zeros) | Terminal binding | Prover-Worker | ✓ |
+| random (uniform noise) | Terminal binding | Prover-Worker | ✓ |
+| replay (fixed value) | Terminal binding | Prover-Worker | ✓ |
+| tamper at middle slice | Adjacent linking (edge mismatch between π_i and π_{i+1}) | Prover-Worker | ✓ |
+| model substitution | model_digest re-verification | Both | ✓ (by construction) |
+
+**Model**: MNIST MLP (109,386 parameters, 784→128→ReLU→64→ReLU→10), 2-slice configuration.
+
+**Key difference from legacy architecture**: In the legacy design, Master proved using
+Worker-declared output. A malicious Worker could return tampered output and Master would
+generate a valid proof for the *tampered* computation. In the refactored Prover-Worker
+architecture, Worker generates its own proof. The proof's public instances (rescaled I/O)
+are bound to the *actual* ONNX computation, not to the Worker's declared output.
+Verifier extracts I/O from proof, not from network messages.
 
 ## 6. Relationship to Prior Work
 

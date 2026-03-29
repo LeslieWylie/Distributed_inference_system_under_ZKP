@@ -12,6 +12,7 @@ v2/compile/build_circuits.py — 编译阶段：切片导出 + EZKL 电路编译
 """
 
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -33,6 +34,12 @@ from v2.common.commitments import compute_file_digest
 from v2.common.types import SliceArtifact
 
 
+def compute_registry_digest(registry_data: list[dict]) -> str:
+    """Compute a deterministic SHA-256 digest over registry JSON content."""
+    payload = json.dumps(registry_data, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def export_slices(
     num_slices: int = 4,
     num_layers: int = 8,
@@ -41,21 +48,32 @@ def export_slices(
     output_dim: int = 4,
     output_dir: str | None = None,
     seed: int = 42,
+    model_type: str = "mnist",
 ) -> list[dict]:
-    """复用旧模型切分逻辑，导出 ONNX + 校准数据。"""
-    from models.configurable_model import split_and_export
-
+    """导出 ONNX + 校准数据。支持 mnist / configurable 两种模型。"""
     if output_dir is None:
         output_dir = os.path.join(PROJECT_ROOT, "v2", "artifacts", "models")
-    result = split_and_export(
-        num_slices=num_slices,
-        num_layers=num_layers,
-        input_dim=input_dim,
-        hidden_dim=hidden_dim,
-        output_dim=output_dim,
-        output_dir=output_dir,
-        seed=seed,
-    )
+
+    if model_type == "mnist":
+        from models.mnist_model import split_and_export as mnist_export
+        result = mnist_export(
+            num_slices=num_slices,
+            output_dir=output_dir,
+            seed=seed,
+            train=True,
+            train_epochs=3,
+        )
+    else:
+        from models.configurable_model import split_and_export
+        result = split_and_export(
+            num_slices=num_slices,
+            num_layers=num_layers,
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            output_dim=output_dim,
+            output_dir=output_dir,
+            seed=seed,
+        )
     return result["slices"]
 
 
@@ -98,19 +116,36 @@ def build_circuit_for_slice(
     # compile
     assert ezkl.compile_circuit(onnx_path, paths["compiled"], paths["settings"])
 
-    # get_srs
-    async def _fetch():
-        return await ezkl.get_srs(settings_path=paths["settings"], srs_path=paths["srs"])
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-    if loop and loop.is_running():
-        import nest_asyncio
-        nest_asyncio.apply()
-        asyncio.run(_fetch())
-    else:
-        asyncio.run(_fetch())
+    # get_srs — 如果同 logrows 的 SRS 已在其他目录下载过, 复制过来避免重复下载
+    if not os.path.exists(paths["srs"]):
+        with open(paths["settings"]) as _f:
+            _settings = json.load(_f)
+        _logrows = _settings.get("run_args", {}).get("logrows", 0)
+        _shared_srs = os.path.join(
+            os.path.dirname(os.path.dirname(artifacts_dir)),
+            "shared_srs", f"kzg_{_logrows}.srs"
+        )
+        if os.path.exists(_shared_srs):
+            import shutil
+            shutil.copy2(_shared_srs, paths["srs"])
+            print(f"  [SRS] Reused shared SRS (logrows={_logrows})")
+        else:
+            async def _fetch():
+                return await ezkl.get_srs(settings_path=paths["settings"], srs_path=paths["srs"])
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            if loop and loop.is_running():
+                import nest_asyncio
+                nest_asyncio.apply()
+                asyncio.run(_fetch())
+            else:
+                asyncio.run(_fetch())
+            # 保存到共享目录供后续复用
+            os.makedirs(os.path.dirname(_shared_srs), exist_ok=True)
+            import shutil
+            shutil.copy2(paths["srs"], _shared_srs)
 
     # setup
     assert ezkl.setup(paths["compiled"], paths["vk"], paths["pk"], srs_path=paths["srs"])
@@ -134,6 +169,7 @@ def build_registry(
     num_slices: int = 4,
     num_layers: int = 8,
     registry_dir: str | None = None,
+    model_type: str = "mnist",
 ) -> list[SliceArtifact]:
     """
     完整离线编译流程：导出模型 → 编译每片电路 → 写入 registry。
@@ -148,6 +184,7 @@ def build_registry(
         num_slices=num_slices,
         num_layers=num_layers,
         output_dir=models_dir,
+        model_type=model_type,
     )
 
     artifacts = []
@@ -198,6 +235,17 @@ def build_registry(
     with open(registry_path, "w") as f:
         json.dump(registry_data, f, indent=2)
     print(f"[Compile] Registry written: {registry_path}")
+
+    # Persist registry metadata (digest + slice count) for client verification
+    registry_digest = compute_registry_digest(registry_data)
+    metadata_path = os.path.join(registry_dir, "registry", "registry_metadata.json")
+    with open(metadata_path, "w") as f:
+        json.dump({
+            "registry_digest": registry_digest,
+            "slice_count": len(registry_data),
+            "model_type": model_type,
+        }, f, indent=2)
+    print(f"[Compile] Registry metadata written: {metadata_path}")
 
     return artifacts
 

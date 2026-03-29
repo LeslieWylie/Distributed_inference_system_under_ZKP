@@ -1,25 +1,34 @@
 # 面向分布式推理的零知识证明框架
 
-> Distributed Inference System under Zero-Knowledge Proofs  
-> Deferred Certification Architecture for End-to-End Verifiable Distributed Inference
+> Zero-Knowledge Proof Framework for Distributed Inference  
+> Prover-Worker Architecture with Distributed Proof Generation
 
 ## 系统定位
 
-本项目研究如何在分布式切片推理中实现端到端可验证性。系统将深度学习模型按层切片分配给多个 Worker，每个切片最终都生成 EZKL ZKP 证明，由独立 Verifier 通过相邻切片 proof 公开实例的近似一致性检查（public-instance linking）和终端绑定完成全链路认证。
+本项目研究如何在分布式切片推理中实现端到端可验证性。系统基于 **Prover-Worker 架构 + 客户端独立验证**：
 
-**核心思想：所有切片最终都被证明，证明不阻塞执行。**
+1. 每个 Worker **本地执行推理并生成 EZKL ZKP 证明**，证明开销分摊到各节点
+2. 不可信 Coordinator 收集各 Worker 的 proof，组装为 **Proof Bundle** 返回客户端
+3. 客户端使用本地 verifier + registry 工件 **独立验证** bundle，生成最终可信判断
 
-系统支持两种运行模式：
-- **分布式模式**：多个 FastAPI Execution Worker 进程 + Master Coordinator (HTTP 通信)
-- **本地模式**：单进程函数调用级编排（快速原型验证）
+**核心思想：Coordinator 和 Worker 均不可信，客户端独立验证是唯一信任来源。**
 
-系统区分两类输出：
-- **Provisional Output**：在线推理完成后立即返回（~10ms），未经认证
-- **Certified Output**：全部 proof 验证通过 + public-instance linking 闭合后，升级为认证结果
+服务端返回的任何 `certificate` 或 advisory 结果都不是信任来源。
 
-> **注**：当前链路验证使用 proof-bound public-instance linking（近似浮点比较），
-> 非精确密码学 commitment chain。精确 commitment chain 需要 `polycommit` 模式升级（见 future work）。
-> 当前实现优先解决推理完整性验证；隐私保护模式（hashed/private）在 v1 实验中已做技术探索。
+### 与传统架构的区别
+
+| | 传统集中式证明 | 本系统 (Prover-Worker) |
+|---|---|---|
+| 证明生成 | Master 集中 prove | 各 Worker 本地 prove |
+| 证明开销 | 单节点承担全部 | 分摊到 N 个节点 |
+| 安全性 | Worker 返回明文 → Master prove → 可伪造 | Worker 返回 (output, proof) → proof 绑定真实 I/O |
+| 可扩展性 | 受限于 Master 资源 | 随 Worker 数量线性扩展 |
+
+## 模型
+
+- **MNIST MLP** (109,386 参数): 784→128→ReLU→64→ReLU→10
+- 训练准确率: 97.24% (MNIST 测试集, 3 epochs)
+- 2 片切分，EZKL 电路 logrows=16
 
 ## 快速开始
 
@@ -28,74 +37,79 @@
 ```powershell
 winget install --id Anaconda.Miniconda3 -e --silent
 $PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
-& $PY -m pip install ezkl torch onnx onnxscript psutil fastapi uvicorn requests onnxruntime
+& $PY -m pip install ezkl torch torchvision onnx onnxscript psutil fastapi uvicorn requests onnxruntime
 ```
 
-### 运行 (v2 新架构)
+### 离线编译（一次性）
 
 ```powershell
 $env:PYTHONIOENCODING = "utf-8"
 $PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 
-# Phase A：同步全链路认证 (6 种攻击场景, 全部检出)
-& $PY -u -m v2.experiments.e2e_certified --slices 4 --rebuild
+# 训练 MNIST MLP + 导出 ONNX 切片
+& $PY models/mnist_model.py --slices 2 --output-dir v2/artifacts/models
 
-# Phase B/C：执行-证明解耦 + 子进程并行 proving
-& $PY -u -m v2.experiments.deferred_certified
-
-# Fidelity 分层实验 (F1 切片 + F2 量化 + F3 认证)
-& $PY -u -m v2.experiments.fidelity
-
-# 多切片可扩展性 (2/4/8 slices)
-& $PY -u -m v2.experiments.scalability
+# 编译 EZKL 电路 + 生成 registry
+& $PY -c "from v2.compile.build_circuits import build_registry; build_registry(num_slices=2, model_type='mnist')"
 ```
 
-### 运行 (v1 旧架构 baseline)
+## 主工作流 (Mainline)
+
+1. **构建 Registry 工件** (离线，一次性)
+2. **启动 Prover-Workers** (各自持有编译后电路 + PK)
+3. **运行不可信 Coordinator** — 编排请求，收集 proof，组装 Proof Bundle
+4. **客户端独立验证** — 使用本地 verifier + registry 工件验证 bundle
+5. **仅当本地验证返回 `certified` 时接受结果**
+
+服务端证书 (advisory) 仅供调试/缓存使用，不是信任来源。
+
+### 运行 E2E 实验
 
 ```powershell
-# 阶段 1：单机验证
+# 完整端到端实验（5 种攻击场景，全部通过）
+& $PY -u -m v2.experiments.refactored_e2e --slices 2
+
+# 快速冒烟测试（3 种攻击）
+& $PY -u v2/experiments/smoke_test.py
+```
+
+### 运行 v1 基准实验（对照）
+
+```powershell
 & $PY -u scripts/run_single_machine_demo.py
-
-# 阶段 2：分布式推理 (2 Workers + Master)
 & $PY -u scripts/run_stage2.py
-
-# 阶段 3：选择性验证实验
-& $PY -u scripts/run_experiments.py
 ```
 
 ## 项目结构
 
 ```
-├── v2/                              ← 新架构 (Deferred Certification)
-│   ├── common/
-│   │   ├── types.py                 #   RequestStatus, SliceArtifact, Certificate
-│   │   ├── commitments.py           #   SHA-256 域分离承诺
-│   │   └── logging.py               #   JSON Lines 审计日志
+├── v2/                              ← Prover-Worker 架构（活跃开发）
+│   ├── services/
+│   │   ├── prover_worker.py         #   Prover-Worker: 推理 + 证明
+│   │   ├── distributed_coordinator.py #  Master 协调器 (不参与证明)
+│   │   └── workers.json             #   Worker IP/端口配置 (支持跨主机)
 │   ├── compile/
 │   │   └── build_circuits.py        #   ONNX 切片 + EZKL 编译 + registry
 │   ├── prover/
-│   │   ├── ezkl_adapter.py          #   prove_slice (仅 proving, 不含 verify)
+│   │   ├── ezkl_adapter.py          #   prove_slice (gen_witness + prove)
 │   │   ├── parallel.py              #   子进程并行 proving
 │   │   └── prove_worker.py          #   子进程入口
 │   ├── verifier/
 │   │   ├── verify_single.py         #   独立单片验证
 │   │   └── verify_chain.py          #   全链路 linking + 终端绑定 + 证书
-│   ├── execution/
-│   │   ├── pipeline.py              #   Phase A: 同步全链路
-│   │   └── deferred_pipeline.py     #   Phase B/C: 执行-证明解耦
-│   ├── experiments/                 #   G2/G3/G4/F1-F3 实验
-│   ├── docs/
-│   │   ├── protocol.md              #   正式协议文档
-│   │   └── threat_model.md          #   威胁模型
-│   └── metrics/                     #   实验结果 JSON
+│   ├── execution/                   #   本地模式 pipeline (单元测试用)
+│   ├── experiments/                 #   E2E / 保真度 / 可扩展性实验
+│   ├── docs/                        #   协议规范 + 威胁模型
+│   ├── metrics/                     #   实验结果 JSON
+│   └── common/                      #   共享类型 + commitments + logging
 │
-├── distributed/                     ← v1 旧架构 (baseline 对照)
-│   ├── worker.py                    #   Worker FastAPI (选择性验证)
-│   └── master.py                    #   Master 调度 + 三层校验
+├── models/
+│   ├── mnist_model.py               #   MNIST MLP (109K 参数) + 切片导出
+│   └── configurable_model.py        #   旧玩具模型 (baseline)
 │
-├── models/                          #   模型定义 + ONNX 切片
-├── scripts/                         #   v1 旧实验脚本
-├── docs/                            #   设计文档 + 重构说明
+├── distributed/                     ← v1 基准架构（只读参考）
+├── scripts/                         #   v1 实验脚本
+├── docs/                            #   论文 + 答辩材料
 └── survey/                          #   开题报告 + 文献资料
 ```
 
@@ -106,74 +120,56 @@ $PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 | 运行时 | Python (Miniconda) | 3.13 |
 | ZKP 引擎 | EZKL (Halo2/PLONK/KZG) | 23.0.5 |
 | 模型框架 | PyTorch | 2.10.0 |
-| 模型格式 | ONNX | 1.20.1 |
+| 视觉工具 | torchvision | 0.25.0 |
+| 模型格式 | ONNX | 1.20.1 (opset 18) |
 | 推理引擎 | onnxruntime | 1.24.3 |
-| 通信层 | FastAPI + uvicorn | 0.135.1 |
-| 监控 | psutil + time | — |
+| 通信层 | FastAPI + uvicorn | — |
 
-## 实验结果摘要
+## 实验结果
 
-### v2 新架构实验
+### Prover-Worker E2E 实验 — 5/5 PASS
 
-#### G2 协议正确性 — 6/6 PASS
+| 攻击 | 预期 | 结果 | 总耗时 | 证明耗时 | 验证耗时 |
+|------|------|------|--------|----------|----------|
+| normal | certified | ✓ | 5085ms | 4600ms | 129ms |
+| tamper (+999) | invalid | ✓ | 5027ms | 4498ms | 160ms |
+| skip (全零) | invalid | ✓ | 5131ms | 4620ms | 166ms |
+| random (噪声) | invalid | ✓ | 4971ms | 4493ms | 130ms |
+| replay (固定值) | invalid | ✓ | 5227ms | 4761ms | 119ms |
 
-| 攻击 | 状态 | Provisional | Certification |
-|---|:---:|---:|---:|
-| normal | **certified** | 37ms | 4680ms |
-| tamper_last | **invalid** | 66ms | 5155ms |
-| tamper_mid | **invalid** | 103ms | 5019ms |
-| skip | **invalid** | 8ms | 5527ms |
-| random | **invalid** | 10ms | 5070ms |
-| replay | **invalid** | 9ms | 5207ms |
+### 性能分解 (2-slice MNIST MLP)
 
-#### G3 延迟分解 — 子进程并行
+| 阶段 | 耗时 | 说明 |
+|------|------|------|
+| ONNX 推理 | ~1ms | 两片总和 |
+| EZKL 证明 | ~4.5s | 两个 Worker 串行 (可并行化) |
+| 独立验证 | ~130ms | 链式链接 + 终端绑定 |
 
-| 并行度 | Proving | Total | 加速比 |
-|:---:|---:|---:|:---:|
-| 1w | 6344ms | 6441ms | 1.0× |
-| 2w | 5078ms | 5174ms | 1.25× |
-| 4w | 4469ms | 4562ms | **1.42×** |
+## 安全模型
 
-#### Fidelity（严格区分 circuit correctness 与 float fidelity）
+**最小信任根**:
+- 客户端本地验证程序
+- Registry 工件 (`vk/settings/model_digest/srs`)
+- 密码学假设 (EZKL/Halo2 soundness, SHA-256 collision resistance)
 
-| 层级 | Max Abs Error | 说明 |
-|---|---|---|
-| F1 Partition | **0.0** | 切片保持函数组合 |
-| F2 Quantization | **~1.5×10⁻⁸** | EZKL 量化误差极小 |
-| F3 Certified | **~1.5×10⁻⁸** | 认证输出 ≈ 浮点基线 |
+**不可信组件**: Coordinator, Prover-Workers, 网络传输
 
-#### G4 可扩展性 (2/4/8 slices)
+**全链路绑定** (客户端独立验证):
+- 从 proof 公开实例提取 I/O → 不信任 Worker 或 Coordinator 传输的明文值
+- 相邻切片: `rescaled_outputs(π_i) ≈ rescaled_inputs(π_{i+1})`
+- 终端绑定: `rescaled_outputs(π_n) ≈ claimed_final_output`
 
-| Slices | Proof | Verify | Tamper |
-|:---:|---:|---:|:---:|
-| 2 | 2.8s | 40ms | detected |
-| 4 | 6.8s | 83ms | detected |
-| 8 | 12.7s | 168ms | detected |
+### Legacy Paths (Baseline/Reference Only)
 
-### v1 旧架构 Baseline
+以下路径仅作基准对照，不是推荐的 v2 主链:
+- `v2/execution/pipeline.py` — 本地同步 pipeline
+- `v2/execution/deferred_pipeline.py` — 本地 deferred pipeline
+- `v2/services/master_coordinator.py` — 旧集中式 Master
+- `v2/experiments/distributed_e2e.py` — 旧分布式实验
+- `distributed/` + `scripts/` — v1 系统
 
-> 以下为旧系统数据，仅作对照。旧系统允许部分切片不出 proof，不满足 end-to-end 可验证要求。
+## 学术定位
 
-| 切片数 | 验证率 | 端到端(ms) | 安全结果 |
-|:---:|:---:|---:|:---:|
-| 8 | 100% | 15,526 | 篡改被预防 |
-| 8 | 50% | 9,367 | 篡改被预防 |
-| 8 | 25% | 9,087 | 篡改被预防 |
-
-## 文档
-
-- [v2/docs/protocol.md](v2/docs/protocol.md) — 正式协议文档 (End-to-End Statement, 请求状态机)
-- [v2/docs/threat_model.md](v2/docs/threat_model.md) — 威胁模型 (对手能力, 信任假设, 攻击检测矩阵)
-- [docs/refactor/REFACTORING_CHANGELOG.md](docs/refactor/REFACTORING_CHANGELOG.md) — 重构变更日志
-- [DEVELOPMENT_REPORT.md](DEVELOPMENT_REPORT.md) — 环境配置指南
-- [PROJECT_PLAN.md](PROJECT_PLAN.md) — 完整开发计划 + 安全模型
-
-## 参考文献
-
-- [NanoZK: Layerwise ZKP for LLM Inference](https://arxiv.org/abs/2603.18046) — 逐层 proof + commitment chain
-- [DSperse: Targeted Verification in ZKML](https://arxiv.org/abs/2508.06972) — 选择性验证 baseline
-- [Non-Composability of Layerwise Approximate Verification](https://arxiv.org/abs/2602.15756) — 近似层验证不可组合
-- [Artemis: CP-SNARK for zkML](https://arxiv.org/abs/2409.12055) — 低成本 commitment linking
-- [zkGPT](https://www.usenix.org/system/files/usenixsecurity25-qu-zkgpt.pdf) — 单体 LLM 证明
-- [EZKL Documentation](https://docs.ezkl.xyz/) / [Python Bindings](https://pythonbindings.ezkl.xyz/en/stable/)
-- [EZKL Proof Splitting Blog](https://blog.ezkl.xyz/post/splitting/) — split proof + commitment stitching
+- **声称**: 面向不可信 Worker 的应用层可验证推理；证明开销分摊到各节点
+- **不声称**: 分布式 prover 内部协议、隐私推理、恶意 prover 模型
+- **参考**: DSperse, NanoZK, VeriLLM, zkLLM, IMMACULATE, ZKML survey

@@ -1,0 +1,273 @@
+"""
+MNIST MLP 模型定义，支持 N 切片导出。
+
+用于替代玩具 ConfigurableModel，提供真实模型负载和标准数据集评估。
+
+模型结构:
+  Input(784) -> Linear(784,128) -> ReLU
+              -> Linear(128,64) -> ReLU
+              -> Linear(64,10)
+
+参数量: ~110K (784*128 + 128 + 128*64 + 64 + 64*10 + 10 = 109,386)
+"""
+
+import json
+import math
+import os
+
+import numpy as np
+import torch
+import torch.nn as nn
+
+
+class MnistMLP(nn.Module):
+    """三层 MLP 用于 MNIST 分类。"""
+
+    def __init__(self):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(784, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, 10),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.layers(x)
+
+
+class SliceModel(nn.Module):
+    """切片子模型：包含原模型的连续几层。"""
+
+    def __init__(self, layers: nn.Sequential):
+        super().__init__()
+        self.layers = layers
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.layers(x)
+
+
+def _train_mnist_model(model: MnistMLP, epochs: int = 5) -> dict:
+    """
+    使用 torchvision MNIST 数据集训练模型。
+    如果 torchvision 不可用，使用随机权重（仍具有有意义的计算图）。
+
+    返回训练指标字典。
+    """
+    try:
+        from torchvision import datasets, transforms
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+            transforms.Lambda(lambda x: x.view(-1)),  # 展平为 784
+        ])
+        train_dataset = datasets.MNIST(
+            root=os.path.join(os.path.dirname(__file__), ".mnist_data"),
+            train=True, download=True, transform=transform,
+        )
+        test_dataset = datasets.MNIST(
+            root=os.path.join(os.path.dirname(__file__), ".mnist_data"),
+            train=False, download=True, transform=transform,
+        )
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True)
+        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=256, shuffle=False)
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        criterion = nn.CrossEntropyLoss()
+
+        model.train()
+        for epoch in range(epochs):
+            total_loss = 0
+            for data, target in train_loader:
+                optimizer.zero_grad()
+                output = model(data)
+                loss = criterion(output, target)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+            avg_loss = total_loss / len(train_loader)
+            print(f"  Epoch {epoch+1}/{epochs}: loss={avg_loss:.4f}")
+
+        # 测试准确率
+        model.eval()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for data, target in test_loader:
+                output = model(data)
+                pred = output.argmax(dim=1)
+                correct += (pred == target).sum().item()
+                total += target.size(0)
+        accuracy = correct / total
+        print(f"  Test accuracy: {accuracy:.4f} ({correct}/{total})")
+        return {"trained": True, "accuracy": accuracy, "epochs": epochs}
+
+    except ImportError:
+        print("  [Warning] torchvision not available, using random weights")
+        return {"trained": False, "accuracy": None, "epochs": 0}
+
+
+def split_and_export(
+    num_slices: int = 2,
+    output_dir: str = "models",
+    seed: int = 42,
+    train: bool = True,
+    train_epochs: int = 3,
+) -> dict:
+    """
+    创建 MNIST MLP 模型，按 num_slices 均匀切分，导出 ONNX。
+
+    返回:
+        {
+            "slices": [
+                {"id": 1, "onnx": path, "data": path, "cal": path},
+                ...
+            ],
+            "intermediates": [numpy_array, ...],
+            "input": numpy_array,
+            "model_info": {...},
+        }
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    torch.manual_seed(seed)
+
+    model = MnistMLP()
+
+    # 训练
+    train_info = {"trained": False}
+    if train:
+        print("[Model] Training MNIST MLP...")
+        train_info = _train_mnist_model(model, epochs=train_epochs)
+    model.eval()
+
+    # 获取所有层
+    all_layers = list(model.layers)
+    total = len(all_layers)
+
+    # 均匀切分
+    slice_sizes = [total // num_slices] * num_slices
+    for i in range(total % num_slices):
+        slice_sizes[i] += 1
+
+    # 生成一个标准化的 MNIST 虚拟输入 (784 维)
+    dummy_input = torch.randn(1, 784)
+
+    slices_info = []
+    intermediates = []
+    current_input = dummy_input
+    layer_idx = 0
+
+    for sid in range(num_slices):
+        end_idx = layer_idx + slice_sizes[sid]
+        slice_layers = nn.Sequential(*all_layers[layer_idx:end_idx])
+        slice_model = SliceModel(slice_layers)
+        slice_model.eval()
+
+        # 导出 ONNX (使用 legacy exporter 确保 EZKL/tract 兼容)
+        onnx_path = os.path.join(output_dir, f"slice_{sid + 1}.onnx")
+        slice_model.eval()
+        torch.onnx.export(
+            slice_model,
+            current_input,
+            onnx_path,
+            input_names=["input"],
+            output_names=["output"],
+            opset_version=18,
+            do_constant_folding=True,
+            dynamo=False,
+        )
+
+        # 前向推理
+        with torch.no_grad():
+            slice_output = slice_model(current_input)
+
+        # 输入数据 JSON (EZKL 格式)
+        in_dim = current_input.shape[1]
+        data_array = current_input.detach().numpy().reshape([-1]).tolist()
+        data_path = os.path.join(output_dir, f"slice_{sid + 1}_input.json")
+        with open(data_path, "w") as f:
+            json.dump({"input_data": [data_array]}, f)
+
+        # 校准数据 JSON（20 个随机样本）
+        cal_array = torch.randn(20, in_dim).numpy().reshape([-1]).tolist()
+        cal_path = os.path.join(output_dir, f"slice_{sid + 1}_cal.json")
+        with open(cal_path, "w") as f:
+            json.dump({"input_data": [cal_array]}, f)
+
+        slices_info.append({
+            "id": sid + 1,
+            "onnx": os.path.abspath(onnx_path),
+            "data": os.path.abspath(data_path),
+            "cal": os.path.abspath(cal_path),
+            "in_dim": in_dim,
+            "out_dim": slice_output.shape[1],
+        })
+        intermediates.append(slice_output.detach().numpy())
+
+        current_input = slice_output
+        layer_idx = end_idx
+
+    # 保真度验证
+    with torch.no_grad():
+        full_output = model(dummy_input)
+    final_slice_output = torch.tensor(intermediates[-1])
+
+    diff = final_slice_output - full_output
+    fidelity = {
+        "l1_distance": float(torch.abs(diff).sum()),
+        "l2_distance": float(torch.norm(diff, p=2)),
+        "max_abs_error": float(torch.abs(diff).max()),
+        "relative_error": float(
+            torch.norm(diff, p=2) / (torch.norm(full_output, p=2) + 1e-10)
+        ),
+    }
+    assert torch.allclose(final_slice_output, full_output, atol=1e-5), \
+        "切片组合输出与完整模型输出不一致!"
+
+    total_params = sum(p.numel() for p in model.parameters())
+    model_info = {
+        "name": "MnistMLP",
+        "total_params": total_params,
+        "architecture": "784 -> 128 -> ReLU -> 64 -> ReLU -> 10",
+        "num_slices": num_slices,
+        "input_dim": 784,
+        "output_dim": 10,
+        "fidelity": fidelity,
+        **train_info,
+    }
+
+    print(f"[Model] MNIST MLP: {total_params:,} params, {num_slices} slices")
+    print(f"[Fidelity] L1={fidelity['l1_distance']:.2e}  "
+          f"L2={fidelity['l2_distance']:.2e}  "
+          f"MaxErr={fidelity['max_abs_error']:.2e}")
+
+    # 保存模型信息
+    info_path = os.path.join(output_dir, "model_info.json")
+    with open(info_path, "w") as f:
+        json.dump(model_info, f, indent=2)
+
+    return {
+        "slices": slices_info,
+        "intermediates": intermediates,
+        "input": dummy_input.detach().numpy(),
+        "model_info": model_info,
+    }
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--slices", type=int, default=2)
+    parser.add_argument("--no-train", action="store_true")
+    parser.add_argument("--output-dir", type=str, default="models/mnist")
+    args = parser.parse_args()
+
+    result = split_and_export(
+        num_slices=args.slices,
+        output_dir=args.output_dir,
+        train=not args.no_train,
+    )
+    print(f"\nExported {len(result['slices'])} slices to {args.output_dir}")
+    for s in result["slices"]:
+        print(f"  Slice {s['id']}: in={s['in_dim']}, out={s['out_dim']}, {s['onnx']}")

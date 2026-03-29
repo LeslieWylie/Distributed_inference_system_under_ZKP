@@ -15,22 +15,56 @@ v2/logs/
 models/*.onnx
 models/*.onnx.data
 models/exp_*/
+models/.mnist_data/
 
 # Temporary data files
 models/*_tampered.json
+models/slice_*_cal.json
+models/slice_*_input.json
+
+# Legacy v1 code (retained locally as reference only)
+common/
+distributed/
+scripts/
+tests/
+figures/
+metrics/
+models/configurable_model.py
+models/full_model.py
+
+# Legacy v2 baselines (retained locally as reference only)
+v2/execution/
+v2/services/execution_worker.py
+v2/services/master_coordinator.py
+v2/experiments/distributed_e2e.py
+v2/experiments/phase_b_smoke.py
+v2/experiments/quick_test*.py
+v2/metrics/phase_a_quick_test.json
+
+# Old docs and survey binary files
+docs/midterm/
+docs/project/
+docs/archive/
+docs/refactor/GPT_comment.md
+docs/refactor/REFACTORING_CHANGELOG.md
+docs/refactor/claude_refactor_guide_merged.md
+docs/refactor/zkml_deep_search_gq1_gq5.md
+docs/refactor/zkp_distributed_inference_refactor_briefing*
+
+# Survey binaries (too large for repo)
+survey/*.pdf
+survey/*.pptx
+survey/PPT模板/
+survey/中期检查表.pdf
+survey/external/
 
 # Experiment logs (keep JSON results, ignore text logs)
-metrics/*_log.txt
-metrics/exp_log.txt
+v2/metrics/*_log*.txt
 
 # Debug logs and temp files
 *.log
 *_pid.txt
 terminal_log.txt
-
-# Temporary test scripts
-v2/experiments/quick_test*.py
-v2/metrics/phase_a_quick_test.json
 
 # IDE
 .vscode/
@@ -39,7 +73,6 @@ v2/metrics/phase_a_quick_test.json
 # OS
 Thumbs.db
 .DS_Store
-.idea/
 
 # Virtual environments
 .venv*/
@@ -48,6 +81,10 @@ conda-*/
 # Word/Office temp files
 ~$*.docx
 ~$*.pptx
+
+# Root-level stray legacy files
+中期报告_*.md
+武垚乐-软件开发.tex
 ~$*.xlsx
 
 # pytest cache

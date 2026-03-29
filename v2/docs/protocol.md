@@ -20,12 +20,16 @@ The statement is verified through three binding mechanisms:
 
 | Role | Trust | Responsibility |
 |---|---|---|
-| Client | Trusted | Submits input, receives provisional/certified output |
-| Master/Scheduler | Trusted | Orchestration, state machine, triggers verification |
-| Execution Worker | **Untrusted** | Executes slice inference only |
-| Prover | **Untrusted** | Generates proof (cannot forge valid proof for wrong computation) |
-| Verifier | Trusted (co-located with Master) | Independent proof verification + chain linking |
+| Client | Trusted | Final verification authority; verifies ProofBundle locally |
+| Coordinator | **Untrusted** | Scheduling, proof collection, bundle assembly only |
+| Prover-Worker | **Untrusted** | Executes slice inference AND generates proof locally |
+| Verifier (client-side) | Trusted | Independent proof verification + chain linking |
 | Artifact Registry | Trusted (static, immutable after setup) | Stores vk/pk/srs/model_digest per slice |
+
+**Architecture change (v2 refactor)**: In the previous design, Workers only executed inference
+and Master generated proofs centrally. The refactored architecture merges inference and proving
+into each **Prover-Worker**, distributing proof generation overhead across all nodes.
+This matches the task requirement: "将证明生成任务分摊至多个节点".
 
 ## 3. Request State Machine
 
@@ -44,26 +48,25 @@ SUBMITTED → EXECUTING → EXECUTED_UNCERTIFIED → PROVING → VERIFYING → C
 
 ## 4. Online Protocol (per request)
 
-### Phase 1: Execution (critical path, ~10ms for 4 slices)
+### Phase 1: Distributed Execution + Proving (sequential HTTP calls to Prover-Workers)
 ```
 for i = 1 to n:
-    input_commit_i = Commit(req_id, i, d_i, x_{i-1})
-    x_i = ONNXRuntime(M_i, x_{i-1})    // untrusted Worker
-    output_commit_i = Commit(req_id, i, d_i, x_i)
+    // HTTP POST to Prover-Worker_i at /infer_and_prove
+    (x_i, π_i) = ProverWorker_i.infer_and_prove(req_id, x_{i-1})
+        // Worker internally: x_i = ONNXRuntime(M_i, x_{i-1})
+        //                    π_i = ezkl.prove(x_{i-1}, compiled_i, pk_i, srs_i)
     pass x_i to slice i+1
 return x_n as provisional_output
-status ← EXECUTED_UNCERTIFIED
+collect all {π_1, ..., π_n}
 ```
 
-### Phase 2: Proving (background, parallel, ~2-5s for 4 slices)
-```
-for i = 1 to n (parallel):
-    witness_i = ezkl.gen_witness(x_{i-1}, compiled_i)
-    π_i = ezkl.prove(witness_i, compiled_i, pk_i, srs_i)
-status ← PROVING → completed
-```
+**Key security property**: Each Worker generates its own proof locally.
+The proof's `pretty_public_inputs.rescaled_outputs` is cryptographically bound
+to the actual ONNX computation result (PLONK soundness). A malicious Worker
+that returns a tampered `x_i` but honest proof will be detected because
+`rescaled_outputs(π_i) ≠ x_i` (terminal/adjacent binding failure).
 
-### Phase 3: Verification (independent, ~80ms)
+### Phase 2: Independent Verification (~120ms)
 ```
 for i = 1 to n:
     assert ezkl.verify(π_i, settings_i, vk_i, srs_i)       // Step 1: proof soundness
@@ -152,11 +155,23 @@ The system supports two runtime modes:
 ### Local mode (v2/execution/pipeline.py)
 Single-process function-call orchestration. Used for fast prototyping and unit testing.
 
-### Distributed mode (v2/services/)
+### Distributed mode (v2/services/) — Refactored Architecture
 True multi-process architecture with HTTP communication:
-- **Execution Workers** (`execution_worker.py`): FastAPI services, one per slice
-- **Master Coordinator** (`master_coordinator.py`): HTTP-based orchestration + verification
-- Workers are untrusted; Master/Verifier is the trust anchor
+- **Prover-Workers** (`prover_worker.py`): FastAPI services, one per slice.
+  Each Worker executes ONNX inference AND generates EZKL proof locally.
+  Endpoint: `POST /infer_and_prove` → returns `{output_tensor, proof_json}`.
+  Bind address: `0.0.0.0` (supports cross-host deployment).
+- **Distributed Coordinator** (`distributed_coordinator.py`): HTTP-based orchestration.
+  Master does NOT prove — only dispatches requests and collects proofs.
+  Delegates all proofs to independent Verifier.
+- **Worker configuration**: `workers.json` defines per-slice `{host, port}`.
+  Local development: `127.0.0.1`; server deployment: real IPs.
+- Workers are untrusted; Master/Verifier is the trust anchor.
+
+### Legacy mode (v2/services/execution_worker.py, master_coordinator.py)
+Old architecture where Workers only executed inference and Master proved centrally.
+Retained as baseline comparison. **Not recommended** — has a fundamental security gap:
+Master proves using Worker-declared output, which a malicious Worker can forge.
 
 ## 10. Comparison with NanoZK
 
@@ -167,4 +182,5 @@ True multi-process architecture with HTTP communication:
 | Linking | Hash equality | Rescaled public instance ≈-comparison |
 | Parallelism | Layer-parallel proving | Subprocess-parallel proving |
 | Soundness | Compositional (union bound) | Per-slice + linking + terminal |
-| Scale target | LLM (GPT-2, 12 layers) | Small FC model (8 layers, 2/4/8 slices) |
+| Scale target | LLM (GPT-2, 12 layers) | MNIST MLP (109K params, 2 slices) |
+| Proof distribution | Single prover | Distributed Prover-Worker per slice |
