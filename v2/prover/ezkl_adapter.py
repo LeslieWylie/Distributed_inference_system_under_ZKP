@@ -28,6 +28,61 @@ def get_memory_mb() -> float:
     return psutil.Process().memory_info().rss / (1024 * 1024)
 
 
+def _flatten_float_values(data) -> list[float]:
+    values: list[float] = []
+    if isinstance(data, list):
+        for item in data:
+            values.extend(_flatten_float_values(item))
+        return values
+    return [float(data)]
+
+
+def _extract_float_field(payload: dict | None, field: str) -> list[float]:
+    if not isinstance(payload, dict):
+        return []
+    values = payload.get(field, [])
+    if not values:
+        return []
+    return _flatten_float_values(values)
+
+
+def extract_proof_bound_tensor(
+    proof_data: dict | None,
+    witness_path: str | None,
+    field: str,
+) -> list[float]:
+    """Read proof-bound tensors from proof JSON, falling back to witness JSON.
+
+    public visibility exposes `pretty_public_inputs` directly in the proof.
+    hidden visibility modes omit those values from the proof, so the prover side
+    must recover the same canonical tensor from the generated witness.
+    """
+    proof_values = _extract_float_field(
+        (proof_data or {}).get("pretty_public_inputs", {}),
+        field,
+    )
+    if proof_values:
+        return proof_values
+
+    if not witness_path:
+        return []
+
+    try:
+        with open(witness_path, "r", encoding="utf-8") as handle:
+            witness_data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    witness_values = _extract_float_field(
+        witness_data.get("pretty_elements", {}),
+        field,
+    )
+    if witness_values:
+        return witness_values
+
+    return _extract_float_field(witness_data, field)
+
+
 def write_input_json(data_list: list, path: str):
     """将 flat 数据列表写成 EZKL 输入格式。"""
     with open(path, "w") as f:
@@ -76,7 +131,7 @@ def prove_slice(
     mem_start = get_memory_mb()
 
     # gen_witness
-    ezkl.gen_witness(data_path, compiled_path, witness_path)
+    ezkl.gen_witness(data_path, compiled_path, witness_path)  # pyright: ignore[reportCallIssue]
 
     # prove
     t0 = time.perf_counter()
@@ -97,6 +152,16 @@ def prove_slice(
         "rescaled_outputs": ppi.get("rescaled_outputs", []),
         "rescaled_inputs": ppi.get("rescaled_inputs", []),
     }
+    proof_bound_outputs = extract_proof_bound_tensor(
+        proof_data,
+        witness_path,
+        "rescaled_outputs",
+    )
+    proof_bound_inputs = extract_proof_bound_tensor(
+        proof_data,
+        witness_path,
+        "rescaled_inputs",
+    )
 
     # 清理临时输入文件
     try:
@@ -112,6 +177,8 @@ def prove_slice(
         "peak_rss_mb": round(max(mem_start, mem_end), 2),
         "proof_size_bytes": os.path.getsize(proof_path),
         "commitments": commitments,
+        "proof_bound_inputs": proof_bound_inputs,
+        "proof_bound_outputs": proof_bound_outputs,
     }
 
 

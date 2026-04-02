@@ -164,6 +164,38 @@ class ProofBundle:
     slices: list[ProofBundleSlice] = field(default_factory=list)
     server_side_advisory: dict[str, Any] = field(default_factory=dict)
 
+    def strip_intermediate_values(self) -> "ProofBundle":
+        """
+        返回隐私过滤后的 ProofBundle 副本。
+
+        过滤规则:
+          - 每片 proof_json 中的 pretty_public_inputs 被清除
+            (rescaled_inputs / rescaled_outputs / processed_inputs / processed_outputs)
+          - 首片 initial_input 保留 (输入绑定需要)
+          - 末片 claimed_final_output 保留 (终端绑定需要)
+          - 各片的 worker_claimed_output 被清除 (中间激活不暴露)
+          - proof 的密码学部分 (hex proof bytes, instances) 保留不动
+
+        用途: 在不需要中间激活可见性的场景下,
+              验证方仍可通过 ezkl.verify() 验证密码学有效性,
+              通过 scale 对齐后的 rescaled 值做链接。
+        """
+        import copy
+        bundle = copy.deepcopy(self)
+        for i, s in enumerate(bundle.slices):
+            # 清除 proof_json 中的可读激活值
+            ppi = s.proof_json.get("pretty_public_inputs", {})
+            first_slice = (i == 0)
+            last_slice = (i == len(bundle.slices) - 1)
+            if not first_slice:
+                ppi.pop("rescaled_inputs", None)
+            if not last_slice:
+                ppi.pop("rescaled_outputs", None)
+            # 清除所有中间片的 worker_claimed_output
+            if not last_slice:
+                s.worker_claimed_output = []
+        return bundle
+
 
 # ---------------------------------------------------------------------------
 # 客户端独立验证结果 — 唯一最终可信判断

@@ -20,6 +20,10 @@ import torch
 import torch.nn as nn
 
 
+MODEL_CACHE_DIR = os.path.join(os.path.dirname(__file__), ".mnist_cache")
+MODEL_CACHE_PATH = os.path.join(MODEL_CACHE_DIR, "full_model_state.pt")
+
+
 class MnistMLP(nn.Module):
     """三层 MLP 用于 MNIST 分类。"""
 
@@ -46,6 +50,115 @@ class SliceModel(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.layers(x)
+
+
+def _expand_layers_for_slices(all_layers: list[nn.Module], num_slices: int) -> list[nn.Module]:
+    expanded = list(all_layers)
+    while len(expanded) < num_slices:
+        next_expanded: list[nn.Module] = []
+        for index, layer in enumerate(expanded):
+            next_expanded.append(layer)
+            if len(next_expanded) < num_slices and index < len(expanded) - 1:
+                next_expanded.append(nn.Identity())
+        if len(next_expanded) == len(expanded):
+            break
+        expanded = next_expanded
+    return expanded
+
+
+def build_slice_models(model: MnistMLP, num_slices: int) -> list[SliceModel]:
+    all_layers = _expand_layers_for_slices(list(model.layers), num_slices)
+    total = len(all_layers)
+    slice_sizes = [total // num_slices] * num_slices
+    for index in range(total % num_slices):
+        slice_sizes[index] += 1
+
+    slice_models = []
+    layer_index = 0
+    for size in slice_sizes:
+        end_index = layer_index + size
+        slice_models.append(SliceModel(nn.Sequential(*all_layers[layer_index:end_index])))
+        layer_index = end_index
+    return slice_models
+
+
+def build_slice_calibration_tensors(
+    model: MnistMLP,
+    num_slices: int,
+    calibration_inputs: torch.Tensor,
+) -> list[torch.Tensor]:
+    slice_models = build_slice_models(model, num_slices)
+    calibration_tensors: list[torch.Tensor] = []
+    current_batch = calibration_inputs.detach().clone()
+
+    with torch.no_grad():
+        for slice_model in slice_models:
+            calibration_tensors.append(current_batch.detach().cpu().clone())
+            current_batch = slice_model(current_batch)
+
+    return calibration_tensors
+
+
+def load_representative_mnist_batch(num_samples: int, seed: int = 42) -> torch.Tensor:
+    samples = sample_mnist_inputs(num_samples=num_samples, seed=seed)
+    return torch.tensor([sample["input_tensor"] for sample in samples], dtype=torch.float32)
+
+
+def save_model_state(
+    model: MnistMLP,
+    output_dir: str,
+    metadata: dict | None = None,
+) -> str:
+    os.makedirs(output_dir, exist_ok=True)
+    state_path = os.path.join(output_dir, "full_model_state.pt")
+    payload = {
+        "state_dict": model.state_dict(),
+        "metadata": metadata or {},
+        "architecture": "784 -> 128 -> ReLU -> 64 -> ReLU -> 10",
+    }
+    torch.save(payload, state_path)
+    return state_path
+
+
+def load_model_state(state_path: str, map_location: str = "cpu") -> MnistMLP:
+    payload = torch.load(state_path, map_location=map_location)
+    state_dict = payload.get("state_dict", payload)
+    model = MnistMLP()
+    model.load_state_dict(state_dict)
+    model.eval()
+    return model
+
+
+def load_model_checkpoint(state_path: str, map_location: str = "cpu") -> dict:
+    return torch.load(state_path, map_location=map_location)
+
+
+def sample_mnist_inputs(num_samples: int, seed: int = 42) -> list[dict]:
+    from torchvision import datasets, transforms
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,)),
+        transforms.Lambda(lambda x: x.view(-1)),
+    ])
+    dataset = datasets.MNIST(
+        root=os.path.join(os.path.dirname(__file__), ".mnist_data"),
+        train=False,
+        download=True,
+        transform=transform,
+    )
+
+    rng = np.random.default_rng(seed)
+    indices = rng.choice(len(dataset), size=num_samples, replace=False)
+    samples = []
+    for index in indices.tolist():
+        tensor, label = dataset[index]
+        samples.append({
+            "index": int(index),
+            "label": int(label),
+            "input_tensor": tensor.detach().numpy().astype(np.float32).tolist(),
+        })
+    return samples
 
 
 def _train_mnist_model(model: MnistMLP, epochs: int = 5) -> dict:
@@ -134,42 +247,46 @@ def split_and_export(
 
     model = MnistMLP()
 
-    # 训练
     train_info = {"trained": False}
-    if train:
+    if train and os.path.exists(MODEL_CACHE_PATH):
+        print("[Model] Loading cached MNIST MLP state...")
+        payload = load_model_checkpoint(MODEL_CACHE_PATH)
+        model.load_state_dict(payload["state_dict"])
+        train_info = payload.get("metadata", train_info)
+    elif train:
         print("[Model] Training MNIST MLP...")
         train_info = _train_mnist_model(model, epochs=train_epochs)
+        save_model_state(model, MODEL_CACHE_DIR, metadata=train_info)
     model.eval()
 
-    # 获取所有层
-    all_layers = list(model.layers)
-    total = len(all_layers)
+    slice_models = build_slice_models(model, num_slices)
 
-    # 均匀切分
-    slice_sizes = [total // num_slices] * num_slices
-    for i in range(total % num_slices):
-        slice_sizes[i] += 1
+    calibration_source = "mnist_test_set"
+    calibration_sample_count = 20  # 保守: 足够校准但避免极端激活导致 EZKL 溢出
+    try:
+        calibration_batch = load_representative_mnist_batch(calibration_sample_count, seed=seed)
+    except Exception as exc:
+        print(f"  [Warning] failed to load representative MNIST calibration data, falling back to random inputs: {exc}")
+        calibration_source = "random_fallback"
+        calibration_batch = torch.randn(calibration_sample_count, 784)
 
-    # 生成一个标准化的 MNIST 虚拟输入 (784 维)
-    dummy_input = torch.randn(1, 784)
+    dummy_input = calibration_batch[:1].clone()
+    calibration_tensors = build_slice_calibration_tensors(model, num_slices, calibration_batch)
 
     slices_info = []
     intermediates = []
     current_input = dummy_input
-    layer_idx = 0
 
-    for sid in range(num_slices):
-        end_idx = layer_idx + slice_sizes[sid]
-        slice_layers = nn.Sequential(*all_layers[layer_idx:end_idx])
-        slice_model = SliceModel(slice_layers)
+    for sid, slice_model in enumerate(slice_models, start=1):
         slice_model.eval()
+        calibration_input = calibration_tensors[sid - 1]
 
         # 导出 ONNX (使用 legacy exporter 确保 EZKL/tract 兼容)
-        onnx_path = os.path.join(output_dir, f"slice_{sid + 1}.onnx")
+        onnx_path = os.path.join(output_dir, f"slice_{sid}.onnx")
         slice_model.eval()
         torch.onnx.export(
             slice_model,
-            current_input,
+            (current_input,),
             onnx_path,
             input_names=["input"],
             output_names=["output"],
@@ -185,18 +302,18 @@ def split_and_export(
         # 输入数据 JSON (EZKL 格式)
         in_dim = current_input.shape[1]
         data_array = current_input.detach().numpy().reshape([-1]).tolist()
-        data_path = os.path.join(output_dir, f"slice_{sid + 1}_input.json")
+        data_path = os.path.join(output_dir, f"slice_{sid}_input.json")
         with open(data_path, "w") as f:
             json.dump({"input_data": [data_array]}, f)
 
         # 校准数据 JSON（20 个随机样本）
-        cal_array = torch.randn(20, in_dim).numpy().reshape([-1]).tolist()
-        cal_path = os.path.join(output_dir, f"slice_{sid + 1}_cal.json")
+        cal_array = calibration_input.detach().numpy().reshape([-1]).tolist()
+        cal_path = os.path.join(output_dir, f"slice_{sid}_cal.json")
         with open(cal_path, "w") as f:
             json.dump({"input_data": [cal_array]}, f)
 
         slices_info.append({
-            "id": sid + 1,
+            "id": sid,
             "onnx": os.path.abspath(onnx_path),
             "data": os.path.abspath(data_path),
             "cal": os.path.abspath(cal_path),
@@ -206,7 +323,6 @@ def split_and_export(
         intermediates.append(slice_output.detach().numpy())
 
         current_input = slice_output
-        layer_idx = end_idx
 
     # 保真度验证
     with torch.no_grad():
@@ -234,8 +350,13 @@ def split_and_export(
         "input_dim": 784,
         "output_dim": 10,
         "fidelity": fidelity,
+        "calibration_source": calibration_source,
+        "calibration_samples": int(calibration_batch.shape[0]),
         **train_info,
     }
+
+    state_path = save_model_state(model, output_dir, metadata=model_info)
+    model_info["state_path"] = os.path.abspath(state_path)
 
     print(f"[Model] MNIST MLP: {total_params:,} params, {num_slices} slices")
     print(f"[Fidelity] L1={fidelity['l1_distance']:.2e}  "
@@ -252,6 +373,7 @@ def split_and_export(
         "intermediates": intermediates,
         "input": dummy_input.detach().numpy(),
         "model_info": model_info,
+        "state_path": os.path.abspath(state_path),
     }
 
 

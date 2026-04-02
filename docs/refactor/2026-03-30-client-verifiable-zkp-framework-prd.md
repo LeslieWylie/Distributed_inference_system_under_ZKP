@@ -1,6 +1,6 @@
 # 面向分布式推理的零知识证明框架重构 PRD
 
-> 版本：v1
+> 版本：v2
 > 日期：2026-03-30
 > 目标读者：Claude / Copilot 代码代理、项目作者
 > 重构目标：先落地强工程版全链路可信，再为后续更强论文版优化预留接口
@@ -33,10 +33,10 @@
 
 本轮重构完成后，系统必须满足以下条件：
 
-1. 客户端在不信任 Coordinator、Workers、网络的前提下，能够仅依赖本地 verifier 与 registry 工件完成完整验证。
-2. 任一单片输出篡改、proof 替换、切片乱序、最终输出调包，客户端验证结果必须为 `invalid` 或失败，不能错误给出 `certified`。
+1. 客户端在不信任 Coordinator、Workers、网络的前提下，能够仅依赖本地 verifier 与 registry 工件完成完整验证，并显式校验 bundle 元数据与本地 registry 版本绑定关系。
+2. 任一单片输出篡改、proof 替换、切片乱序、切片缺失、重复切片、最终输出调包、registry 版本不一致，客户端验证结果必须为 `invalid` 或失败，不能错误给出 `certified`。
 3. v2 仅保留一条清晰主链：构建工件、启动 Worker、运行 Coordinator、生成 Proof Bundle、客户端独立验证。
-4. 实验入口收敛为统一体系，所有主实验均围绕同一主链运行。
+4. 主实验入口收敛为统一体系；任何仍读取服务端 `certificate` 作为最终结论的实验脚本，必须迁移到 client verdict 或显式降级为 legacy。
 5. README、协议文档、威胁模型、实验脚本与代码实现之间不存在相互矛盾的信任口径。
 
 ---
@@ -80,6 +80,8 @@
 
 - 客户端可以从 `ProofBundle + Registry` 直接生成最终 verdict。
 - 客户端验证不依赖服务端的 `verified=true`、`certificate` 或 advisory 字段。
+- 客户端必须校验 `bundle_version`、`slice_count`、切片顺序/唯一性，以及 `registry_digest` 与本地 canonical registry manifest 的一致性。
+- 对 malformed bundle、缺片 bundle、重复切片 bundle、异常 proof 文件，客户端必须 fail-closed 到 `invalid`，而不是抛出未处理异常后中止。
 
 #### 2.3 信任语义收束
 
@@ -97,6 +99,7 @@
 
 - 主实验改为“服务端生成 bundle，客户端独立验证 bundle”。
 - 所有主实验输出统一包含：运行配置、bundle 元数据、客户端验证 verdict、分阶段时延、每片 proving 指标。
+- 若资源指标仅覆盖 Coordinator 本进程，则必须显式标注为 `coordinator_local_resource_profile` 或等价语义，不能表述为整套分布式系统总资源开销。
 
 ### Non-Goals
 
@@ -226,22 +229,26 @@ Registry 提供客户端独立验证所需的可信静态工件：
 要求：
 
 - `slices` 必须按 `slice_id` 升序排列。
+- `slices` 不允许重复 `slice_id`，且数量必须与 `slice_count` 一致。
 - `proof_json` 必须是客户端验证所需的主证据。
 - `worker_claimed_output` 仅作审计，不作信任输入。
 - `server_side_advisory` 必须显式标注为非信任来源。
+- `registry_digest` 必须绑定到 canonical registry manifest，而不是依赖瞬时或主机相关的绝对路径字符串。
 
 ### 4.4 Client Verification Flow
 
 客户端收到 bundle 后，必须执行以下步骤：
 
-1. 校验 `bundle_version`、`slice_count`、`registry_digest` 是否与本地 registry 一致。
-2. 按 `slice_id` 顺序校验每片 `model_digest` 是否与 registry 一致。
-3. 对每片 `proof_json` 执行本地 proof verification。
-4. 从每片 proof 的公开实例中提取 `rescaled_inputs / rescaled_outputs`。
-5. 校验首片输入是否绑定 `initial_input`。
-6. 校验相邻切片 linking。
-7. 校验末片输出是否绑定 `claimed_final_output`。
-8. 生成最终 `certified / invalid`。
+1. 校验 `bundle_version` 是否受支持。
+2. 校验 `slice_count`、切片顺序、切片唯一性、缺片情况，并验证 `registry_digest` 是否与本地 canonical registry manifest 一致。
+3. 按 `slice_id` 顺序校验每片 `model_digest` 是否与 registry 一致。
+4. 对每片 `proof_json` 执行本地 proof verification。
+5. 从每片 proof 的公开实例中提取 `rescaled_inputs / rescaled_outputs`。
+6. 校验首片输入是否绑定 `initial_input`。
+7. 校验相邻切片 linking。
+8. 校验末片输出是否绑定 `claimed_final_output`。
+9. 任一结构错误、字段错误、proof 缺失、版本不匹配，均 fail-closed 到 `invalid`。
+10. 生成最终 `certified / invalid`。
 
 客户端的最终 verdict 是唯一可信结果。
 
@@ -257,6 +264,8 @@ Registry 提供客户端独立验证所需的可信静态工件：
   - `non_authoritative_certificate`
 
 禁止继续使用会误导客户端的语义名称，例如：“final certificate”。
+
+客户端 verifier 不得因 `certificate` 缺失、异常或旧字段残留而改变最终 verdict。
 
 ---
 
@@ -292,6 +301,7 @@ Registry 提供客户端独立验证所需的可信静态工件：
 - 可由客户端直接调用
 - 支持直接消费 bundle 或由 bundle 解构得到的 proof jobs
 - 输出结构面向客户端独立验证而非服务端内部状态机
+- 不允许依赖 `assert` 作为 bundle 结构错误的主要控制流；异常输入必须转换为结构化 `invalid`
 
 #### [v2/experiments/refactored_e2e.py](v2/experiments/refactored_e2e.py)
 
@@ -300,6 +310,13 @@ Registry 提供客户端独立验证所需的可信静态工件：
 - 服务端运行主链生成 bundle
 - 客户端本地调用 verifier 完成最终验证
 - 实验结果中同时记录 advisory 与 client verdict，但以 client verdict 为准
+
+#### [v2/experiments/smoke_test.py](v2/experiments/smoke_test.py)
+
+必须修改或降级：
+
+- 不得继续读取 `result["certificate"]` 作为主链结果
+- 若保留，则必须调用 client verifier；若不维护，则应明确标注为 legacy smoke path
 
 #### [README.md](README.md)
 
@@ -336,6 +353,7 @@ Registry 提供客户端独立验证所需的可信静态工件：
 - bundle 生成开销
 - client verification 开销
 - advisory 与 client verdict 对照
+- 资源指标的采样范围必须明确标注；若仅采集 Coordinator 进程，则文档与 JSON 字段必须显式说明不是聚合后的全系统指标
 
 #### [v2/execution/pipeline.py](v2/execution/pipeline.py)
 
@@ -351,6 +369,8 @@ Registry 提供客户端独立验证所需的可信静态工件：
 
 - [v2/services/master_coordinator.py](v2/services/master_coordinator.py)
 - [v2/experiments/distributed_e2e.py](v2/experiments/distributed_e2e.py)
+- [v2/experiments/e2e_certified.py](v2/experiments/e2e_certified.py)
+- [v2/experiments/scalability.py](v2/experiments/scalability.py)
 - 旧 distributed baseline 路径
 
 ---
@@ -367,6 +387,8 @@ Registry 提供客户端独立验证所需的可信静态工件：
 4. slice 乱序
 5. claimed final output 调包
 6. model_digest 对应工件替换
+7. bundle 缺片 / 重复切片 / `slice_count` 不一致
+8. `registry_digest` 与本地 registry 不一致
 
 对以上所有场景，客户端最终 verdict 必须不是错误的 `certified`。
 
@@ -382,6 +404,7 @@ Registry 提供客户端独立验证所需的可信静态工件：
 - `client_verdict`
 - `server_side_advisory_status`
 - `per_slice_metrics`
+- `resource_profile_scope`
 
 ### 6.3 Reporting Semantics
 
@@ -397,6 +420,8 @@ Registry 提供客户端独立验证所需的可信静态工件：
 - “Client-side verification certified the bundle”
 - “The result is accepted only after local verification against registry artifacts”
 
+若实验运行在单机 `localhost` 多进程环境，必须表述为单机分布式原型验证，不得表述为跨主机部署结果。
+
 ---
 
 ## 7. Risks
@@ -405,9 +430,10 @@ Registry 提供客户端独立验证所需的可信静态工件：
 
 1. **Bundle 体积膨胀**：proof 全量传输会增加 I/O 压力。
 2. **客户端依赖变重**：本地验证要求客户端具备相应运行环境。
-3. **旧入口清理不彻底**：可能继续保留多个互相竞争的主链叙事。
-4. **文档不同步**：如果代码改了但文档没改，论文与实现仍会脱节。
-5. **近似 linking 的理论边界**：强工程版可以成立，但不能过度宣传为最强精确密码学承诺链。
+3. **registry_digest 定义不一致**：如果编译端、Coordinator 端、客户端使用不同 manifest 结构，则 bundle 无法稳定绑定 registry 版本。
+4. **旧入口清理不彻底**：可能继续保留多个互相竞争的主链叙事。
+5. **文档不同步**：如果代码改了但文档没改，论文与实现仍会脱节。
+6. **近似 linking 的理论边界**：强工程版可以成立，但不能过度宣传为最强精确密码学承诺链。
 
 ### Scope Risks
 
@@ -456,6 +482,8 @@ Registry 提供客户端独立验证所需的可信静态工件：
 4. 任何新增字段或数据结构，必须优先服务客户端独立验证，而不是服务端内部方便。
 5. 重构后如果 README、protocol、threat model 与代码语义不一致，视为未完成。
 6. 默认目标是“强工程版 end-to-end verifiability”，不要在代码或文档中暗示已完成更强论文版或理想版。
+7. 不要在不同模块里对 `registry_digest` 使用不同输入结构重复计算；必须定义单一 canonical manifest。
+8. 不要让 malformed bundle 通过 `assert` 或未处理异常终止客户端 verifier；必须 fail-closed 到 `invalid`。
 
 ---
 
@@ -466,7 +494,8 @@ Registry 提供客户端独立验证所需的可信静态工件：
 1. Coordinator 的主返回产物是 `ProofBundle`。
 2. 客户端可以独立从 `ProofBundle + Registry` 生成最终 verdict。
 3. 服务端任何 advisory 结果都明确标记为非信任来源。
-4. 主实验脚本以客户端独立验证结果作为最终结论。
-5. README、protocol、threat model 全部同步更新。
-6. v2 只保留一套主叙事：Worker proving、Coordinator bundling、Client verifying。
-7. 对篡改类场景，系统不允许错误给出 `certified`。
+4. 客户端 verifier 对 malformed bundle、缺片 bundle、重复切片 bundle 返回结构化 `invalid`，而不是未处理异常。
+5. 主实验脚本以客户端独立验证结果作为最终结论；旧 `certificate`-first 入口已迁移或降级。
+6. README、protocol、threat model 全部同步更新。
+7. v2 只保留一套主叙事：Worker proving、Coordinator bundling、Client verifying。
+8. 对篡改类场景，系统不允许错误给出 `certified`。

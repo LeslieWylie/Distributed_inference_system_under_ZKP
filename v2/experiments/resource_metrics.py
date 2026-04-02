@@ -29,18 +29,27 @@ PYTHON = sys.executable
 
 
 class ResourceMonitor:
-    """后台线程采样 CPU% 和 RSS 峰值。"""
+    """后台线程采样 CPU% 和 RSS 峰值。支持监控指定 PID 列表。"""
 
-    def __init__(self, interval_ms=100):
+    def __init__(self, pids=None, interval_ms=100):
         self.interval = interval_ms / 1000
-        self.cpu_samples = []
-        self.rss_samples = []
+        self.cpu_samples = {}   # pid → [samples]
+        self.rss_samples = {}   # pid → [samples]
         self._stop = False
         self._thread = None
-        self._proc = psutil.Process()
+        self._pids = pids or [os.getpid()]
+        for pid in self._pids:
+            self.cpu_samples[pid] = []
+            self.rss_samples[pid] = []
 
     def start(self):
         self._stop = False
+        # 初始化 cpu_percent 计数器
+        for pid in self._pids:
+            try:
+                psutil.Process(pid).cpu_percent(interval=None)
+            except Exception:
+                pass
         self._thread = threading.Thread(target=self._sample, daemon=True)
         self._thread.start()
 
@@ -51,23 +60,30 @@ class ResourceMonitor:
 
     def _sample(self):
         while not self._stop:
-            try:
-                self.cpu_samples.append(self._proc.cpu_percent(interval=None))
-                self.rss_samples.append(
-                    self._proc.memory_info().rss / (1024 * 1024)
-                )
-            except Exception:
-                pass
-            time.sleep(self.interval)
+            for pid in self._pids:
+                try:
+                    p = psutil.Process(pid)
+                    # interval=0.1 让 cpu_percent 做一次自阻塞采样，拿到真实 CPU%
+                    self.cpu_samples[pid].append(p.cpu_percent(interval=0.1))
+                    self.rss_samples[pid].append(
+                        p.memory_info().rss / (1024 * 1024)
+                    )
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
 
     def summary(self):
-        return {
-            "cpu_percent_avg": round(sum(self.cpu_samples) / max(len(self.cpu_samples), 1), 2),
-            "cpu_percent_max": round(max(self.cpu_samples) if self.cpu_samples else 0, 2),
-            "rss_mb_avg": round(sum(self.rss_samples) / max(len(self.rss_samples), 1), 2),
-            "rss_mb_peak": round(max(self.rss_samples) if self.rss_samples else 0, 2),
-            "samples": len(self.cpu_samples),
-        }
+        result = {}
+        for pid in self._pids:
+            cpu = self.cpu_samples.get(pid, [])
+            rss = self.rss_samples.get(pid, [])
+            result[pid] = {
+                "cpu_percent_avg": round(sum(cpu) / max(len(cpu), 1), 2),
+                "cpu_percent_max": round(max(cpu) if cpu else 0, 2),
+                "rss_mb_avg": round(sum(rss) / max(len(rss), 1), 2),
+                "rss_mb_peak": round(max(rss) if rss else 0, 2),
+                "samples": len(cpu),
+            }
+        return result
 
 
 def _start_workers(artifacts, base_port=9001):
@@ -137,9 +153,14 @@ def run_resource_experiments(num_slices=2, num_requests=3):
     print(f"All {len(workers)} workers ready.\n")
 
     try:
-        # ── 1. Resource profiling (single normal request) ──
-        print("=== Resource Profiling (normal) ===")
-        monitor = ResourceMonitor(interval_ms=50)
+        # ── 1. Resource profiling: 监控 Coordinator + 各 Worker 进程 ──
+        print("=== Resource Profiling (normal request) ===")
+        all_pids = [os.getpid()] + [w["proc"].pid for w in workers]
+        pid_labels = {os.getpid(): "coordinator"}
+        for w in workers:
+            pid_labels[w["proc"].pid] = f"worker_{w['slice_id']}"
+
+        monitor = ResourceMonitor(pids=all_pids, interval_ms=50)
         monitor.start()
 
         bundle_start = time.perf_counter()
@@ -151,37 +172,49 @@ def run_resource_experiments(num_slices=2, num_requests=3):
         client_verify_ms = (time.perf_counter() - client_start) * 1000
 
         monitor.stop()
-        resource_profile = monitor.summary()
-        print(f"  CPU avg: {resource_profile['cpu_percent_avg']}%  peak RSS: {resource_profile['rss_mb_peak']} MB")
-        print(f"  Bundle gen: {bundle_ms:.0f}ms  Client verify: {client_verify_ms:.0f}ms")
-        print(f"  Client verdict: {client_result.status}")
+        raw_profile = monitor.summary()
 
-        # ── 2. Throughput ──
-        print(f"\n=== Throughput ({num_requests} requests) ===")
+        # 重新组织为可读格式
+        resource_profile = {}
+        for pid, label in pid_labels.items():
+            resource_profile[label] = raw_profile.get(pid, {})
+
+        print(f"  Client verdict: {client_result.status}")
+        for label, stats in resource_profile.items():
+            print(f"  {label}: CPU avg={stats.get('cpu_percent_avg', 0):.1f}%  "
+                  f"peak RSS={stats.get('rss_mb_peak', 0):.1f} MB")
+
+        # ── 2. Throughput: 连续请求测量 ──
+        print(f"\n=== Throughput ({num_requests} sequential requests) ===")
         tp_start = time.perf_counter()
         for _ in range(num_requests):
             r = run_distributed_pipeline(initial_input, artifacts, worker_urls)
             verify_bundle(r["proof_bundle"], artifacts)
         tp_ms = (time.perf_counter() - tp_start) * 1000
         tp_rps = num_requests / (tp_ms / 1000)
-        print(f"  {num_requests} requests in {tp_ms:.0f}ms = {tp_rps:.3f} req/s")
+        print(f"  {num_requests} requests in {tp_ms:.0f}ms = {tp_rps:.4f} req/s")
 
-        # ── 3. Detection accuracy ──
-        print("\n=== Detection Accuracy (client verdict) ===")
+        # ── 3. Detection accuracy: 覆盖 6 种攻击 ──
+        print("\n=== Detection Accuracy ===")
         attacks = [
-            {"name": "tamper", "fault_at": num_slices, "fault_type": "tamper"},
-            {"name": "skip", "fault_at": num_slices, "fault_type": "skip"},
-            {"name": "random", "fault_at": num_slices, "fault_type": "random"},
-            {"name": "replay", "fault_at": num_slices, "fault_type": "replay"},
+            {"name": "tamper_last", "fault_at": num_slices, "fault_type": "tamper"},
+            {"name": "skip_last", "fault_at": num_slices, "fault_type": "skip"},
+            {"name": "random_last", "fault_at": num_slices, "fault_type": "random"},
+            {"name": "replay_last", "fault_at": num_slices, "fault_type": "replay"},
         ]
+        if num_slices >= 3:
+            attacks.append(
+                {"name": "tamper_mid", "fault_at": max(1, num_slices // 2), "fault_type": "tamper"},
+            )
 
         tp_count = 0
         tn_count = 0
         fp_count = 0
         fn_count = 0
+        per_attack = []
 
-        # Normal (expect certified)
-        for _ in range(2):
+        # Normal (expect certified) — 2 runs
+        for i in range(2):
             r = run_distributed_pipeline(initial_input, artifacts, worker_urls)
             cv = verify_bundle(r["proof_bundle"], artifacts)
             if cv.status == "certified":
@@ -189,15 +222,23 @@ def run_resource_experiments(num_slices=2, num_requests=3):
             else:
                 fp_count += 1
 
-        # Attack (expect invalid)
+        # Attack runs (expect invalid)
         for attack in attacks:
             r = run_distributed_pipeline(initial_input, artifacts, worker_urls,
                 fault_at=attack["fault_at"], fault_type=attack["fault_type"])
             cv = verify_bundle(r["proof_bundle"], artifacts)
-            if cv.status == "invalid":
+            detected = cv.status == "invalid"
+            if detected:
                 tp_count += 1
             else:
                 fn_count += 1
+            per_attack.append({
+                "name": attack["name"],
+                "client_verdict": cv.status,
+                "detected": detected,
+                "failure_reasons": cv.failure_reasons,
+            })
+            print(f"  {attack['name']:15s}: {cv.status} {'✓' if detected else '✗'}")
 
         total = tp_count + fp_count + fn_count + tn_count
         accuracy = (tp_count + tn_count) / total if total > 0 else 0
@@ -210,6 +251,7 @@ def run_resource_experiments(num_slices=2, num_requests=3):
             "false_negative": fn_count, "true_negative": tn_count,
             "accuracy": round(accuracy, 4), "precision": round(precision, 4),
             "recall": round(recall, 4), "f1_score": round(f1, 4),
+            "per_attack": per_attack,
         }
         print(f"  TP={tp_count} FP={fp_count} FN={fn_count} TN={tn_count}")
         print(f"  Accuracy: {accuracy:.2%}  F1: {f1:.2%}")
@@ -218,10 +260,10 @@ def run_resource_experiments(num_slices=2, num_requests=3):
         results = {
             "num_slices": num_slices,
             "resource_profile": resource_profile,
+            "resource_profile_scope": "coordinator_and_workers",
             "bundle_generation_ms": round(bundle_ms, 2),
             "client_verification_ms": round(client_verify_ms, 2),
             "client_verdict": client_result.status,
-            "server_side_advisory": r_normal.get("server_side_advisory", {}),
             "throughput": {
                 "num_requests": num_requests,
                 "total_ms": round(tp_ms, 2),

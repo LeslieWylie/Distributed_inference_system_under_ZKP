@@ -62,7 +62,7 @@ class InferAndProveRequest(BaseModel):
 class InferAndProveResponse(BaseModel):
     req_id: str
     slice_id: int
-    output_tensor: list[float]
+    output_tensor: list[float]  # proof-bound output handed to the next slice
     proof_json: dict  # 完整 proof.json 内容 (含 pretty_public_inputs)
     exec_ms: float
     prove_ms: float
@@ -87,6 +87,7 @@ def create_app(
     onnx_abs = os.path.abspath(onnx_path)
     session = rt.InferenceSession(onnx_abs)
     input_name = session.get_inputs()[0].name
+    input_shape = session.get_inputs()[0].shape  # e.g. [1, 784] or [1, 1, 28, 28]
 
     # 预加载 EZKL adapter
     from v2.prover.ezkl_adapter import prove_slice
@@ -116,7 +117,7 @@ def create_app(
 
         # ── Stage A: ONNX 推理 ──
         t0 = time.perf_counter()
-        input_array = np.array([req.input_tensor], dtype=np.float32)
+        input_array = np.array(req.input_tensor, dtype=np.float32).reshape(input_shape)
         ort_output = session.run(None, {input_name: input_array})
         output_tensor = ort_output[0].flatten().tolist()
         exec_ms = (time.perf_counter() - t0) * 1000
@@ -136,10 +137,6 @@ def create_app(
                 output_tensor = [0.42] * len(output_tensor)
 
         # ── Stage B: EZKL Prove ──
-        # 关键: prove_slice 使用原始 input_tensor 执行 gen_witness + prove
-        # proof 的 public instances 绑定的是 ONNX 推理的真实 I/O
-        # 如果故障注入修改了 output_tensor, proof 中的 rescaled_outputs
-        # 仍然是真实推理的输出 → Verifier 将检测到不一致
         work_dir = os.path.join(work_base, req.req_id)
         prove_result = prove_slice(
             input_tensor=req.input_tensor,
@@ -150,19 +147,75 @@ def create_app(
             tag=f"slice_{slice_id}",
         )
         prove_ms = prove_result["proof_gen_ms"]
+        proof_bound_output = prove_result.get("proof_bound_outputs") or output_tensor
 
         total_ms = (time.perf_counter() - t_total) * 1000
 
         return InferAndProveResponse(
             req_id=req.req_id,
             slice_id=slice_id,
-            output_tensor=output_tensor,
+            output_tensor=proof_bound_output,
             proof_json=prove_result["proof_data"],
             exec_ms=round(exec_ms, 2),
             prove_ms=round(prove_ms, 2),
             total_ms=round(total_ms, 2),
             fault_injected=fault_injected,
         )
+
+    # ── /infer: 仅推理，不生成证明（用于流水线模式） ──
+    @app.post("/infer")
+    def infer_only(
+        req: InferAndProveRequest,
+        fault_type: str = Query("none"),
+    ):
+        t0 = time.perf_counter()
+        input_array = np.array(req.input_tensor, dtype=np.float32).reshape(input_shape)
+        ort_output = session.run(None, {input_name: input_array})
+        output_tensor = ort_output[0].flatten().tolist()
+        exec_ms = (time.perf_counter() - t0) * 1000
+
+        fault_injected = False
+        if fault_type and fault_type != "none":
+            fault_injected = True
+            import random as _random
+            if fault_type == "tamper":
+                output_tensor[0] += 999.0
+            elif fault_type == "skip":
+                output_tensor = [0.0] * len(output_tensor)
+            elif fault_type == "random":
+                output_tensor = [_random.uniform(-10, 10) for _ in output_tensor]
+            elif fault_type == "replay":
+                output_tensor = [0.42] * len(output_tensor)
+
+        return {
+            "req_id": req.req_id,
+            "slice_id": slice_id,
+            "output_tensor": output_tensor,
+            "exec_ms": round(exec_ms, 2),
+            "fault_injected": fault_injected,
+        }
+
+    # ── /prove: 仅生成证明（用于流水线模式） ──
+    @app.post("/prove")
+    def prove_only(req: InferAndProveRequest):
+        t0 = time.perf_counter()
+        work_dir = os.path.join(work_base, req.req_id)
+        prove_result = prove_slice(
+            input_tensor=req.input_tensor,
+            compiled_path=compiled_path,
+            pk_path=pk_path,
+            srs_path=srs_path,
+            work_dir=work_dir,
+            tag=f"slice_{slice_id}",
+        )
+        prove_ms = (time.perf_counter() - t0) * 1000
+
+        return {
+            "req_id": req.req_id,
+            "slice_id": slice_id,
+            "proof_json": prove_result["proof_data"],
+            "prove_ms": round(prove_ms, 2),
+        }
 
     return app
 

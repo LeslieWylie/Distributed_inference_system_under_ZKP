@@ -44,12 +44,13 @@ For each certified request:
 1. **Float-model fidelity**: The certified output may differ from the original
    floating-point model due to EZKL quantization. Fidelity is measured separately (F1/F2/F3).
 2. **Privacy**: Public visibility mode exposes intermediate activations.
-3. **Availability**: A malicious Worker can refuse service.
-4. **Master integrity**: If Master colludes with Workers, the guarantee breaks.
-   Mitigation: on-chain verification or independent auditor (future work).
-5. **Sub-epsilon attacks**: Perturbations smaller than `BASE_EPSILON / (n-1)` per edge
-   are within the quantization noise floor and not distinguishable from legitimate
-   calibration variance. The total accumulated distortion is bounded at `BASE_EPSILON = 0.01`.
+3. **Availability**: A malicious Coordinator or Worker can refuse service.
+4. **Registry publisher integrity**: Registry artifacts are trusted after offline setup.
+   Future work: registry signing or on-chain publication.
+5. **Sub-epsilon attacks**: Perturbations smaller than `LINK_EPSILON = max(BASE_EPSILON / (n-1), 0.004)`
+   per edge are within the current public-visibility quantization noise floor and not
+   distinguishable from legitimate calibration variance. The total accumulated distortion
+   is still bounded at `BASE_EPSILON = 0.01`.
 6. **Exact commitment chain**: Current linking uses rescaled float comparison,
    not cryptographically exact commitment matching (unlike NanoZK's SHA-256 chain).
    Upgrade path: `polycommit` + `swap_proof_commitments()`.

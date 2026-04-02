@@ -103,15 +103,17 @@ In `public` visibility mode, EZKL binds `rescaled_inputs` and `rescaled_outputs`
 as public instances in the proof. `ezkl.verify()` cryptographically confirms these
 values are consistent with the proven computation.
 
-Adjacent linking uses approximate equality with **dynamic epsilon budget**:
+Adjacent linking uses approximate equality with **dynamic epsilon budget plus an engineering floor**:
 - Base budget: `BASE_EPSILON = 0.01`
-- Per-edge threshold: `LINK_EPSILON = BASE_EPSILON / (n-1)` where n = number of slices
+- Per-edge threshold: `LINK_EPSILON = max(BASE_EPSILON / (n-1), 0.004)` where n = number of slices
 - Accumulated chain budget: total accumulated diff must stay < `BASE_EPSILON`
-- Terminal binding: `TERMINAL_EPSILON = BASE_EPSILON / n`
+- Terminal binding: `TERMINAL_EPSILON = max(BASE_EPSILON / n, 0.004)`
 
-This dynamic scheme prevents the **epsilon accumulation vulnerability**: an attacker
-cannot inject sub-threshold perturbations across many edges to accumulate undetected
-distortion. The total chain budget is bounded at `BASE_EPSILON` regardless of slice count.
+The floor (0.004) avoids false negatives when EZKL public-instance dequantization introduces
+legitimate drift at fine-grained boundaries (empirically up to ~0.003 per edge in 8-slice
+chains with propagated calibration). The accumulated-chain budget still prevents unbounded
+sub-threshold distortion. This is an engineering tolerance, not a cryptographic exact-match
+guarantee.
 
 **Note on commitment semantics**: The `compute_commitment()` function (SHA-256 with
 domain separation) is used for audit logging and request tracking. The actual security

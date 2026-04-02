@@ -27,8 +27,10 @@
 ## 模型
 
 - **MNIST MLP** (109,386 参数): 784→128→ReLU→64→ReLU→10
-- 训练准确率: 97.24% (MNIST 测试集, 3 epochs)
-- 2 片切分，EZKL 电路 logrows=16
+  - 训练准确率: 97.24% (MNIST 测试集, 3 epochs)
+  - 支持 2 / 4 / 8 切片配置，EZKL 电路 logrows=16
+- **MNIST CNN** (~54,170 参数): Conv2d(1→8, 3×3)→ReLU→Flatten→FC(5408→10)
+  - 2 切片配置，验证框架对卷积网络的适配能力
 
 ## 快速开始
 
@@ -91,7 +93,7 @@ $PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 │   ├── compile/
 │   │   └── build_circuits.py        #   ONNX 切片 + EZKL 编译 + registry
 │   ├── prover/
-│   │   ├── ezkl_adapter.py          #   prove_slice (gen_witness + prove)
+│   │   ├── ezkl_adapter.py          #   prove_slice + canonical I/O 提取
 │   │   ├── parallel.py              #   子进程并行 proving
 │   │   └── prove_worker.py          #   子进程入口
 │   ├── verifier/
@@ -105,6 +107,7 @@ $PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 │
 ├── models/
 │   ├── mnist_model.py               #   MNIST MLP (109K 参数) + 切片导出
+│   ├── mnist_cnn.py                 #   MNIST CNN (~54K 参数) + 切片导出
 │   └── configurable_model.py        #   旧玩具模型 (baseline)
 │
 ├── distributed/                     ← v1 基准架构（只读参考）
@@ -127,23 +130,43 @@ $PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 
 ## 实验结果
 
-### Prover-Worker E2E 实验 — 5/5 PASS
+### 可扩展性 (2 / 4 / 8 切片)
 
-| 攻击 | 预期 | 结果 | 总耗时 | 证明耗时 | 验证耗时 |
-|------|------|------|--------|----------|----------|
-| normal | certified | ✓ | 5085ms | 4600ms | 129ms |
-| tamper (+999) | invalid | ✓ | 5027ms | 4498ms | 160ms |
-| skip (全零) | invalid | ✓ | 5131ms | 4620ms | 166ms |
-| random (噪声) | invalid | ✓ | 4971ms | 4493ms | 130ms |
-| replay (固定值) | invalid | ✓ | 5227ms | 4761ms | 119ms |
+| 切片数 | 证明总耗时 | 客户端验证 | 端到端总时延 | 正常路径 |
+|--------|-----------|-----------|-------------|----------|
+| 2 | 7,356 ms | 174 ms | 7,845 ms | certified |
+| 4 | 19,176 ms | 438 ms | 20,289 ms | certified |
+| 8 | 32,076 ms | 518 ms | 33,559 ms | certified |
 
-### 性能分解 (2-slice MNIST MLP)
+### 攻击检测 — 恶意节点识别率 100%
 
-| 阶段 | 耗时 | 说明 |
+Precision = 1.0, Recall = 1.0, F1 = 1.0。覆盖篡改、跳过、随机替换、回放和中间切片篡改等场景。
+
+### 保真度 (Fidelity)
+
+| 指标 | 含义 | 结果 |
 |------|------|------|
-| ONNX 推理 | ~1ms | 两片总和 |
-| EZKL 证明 | ~4.5s | 两个 Worker 串行 (可并行化) |
-| 独立验证 | ~130ms | 链式链接 + 终端绑定 |
+| F1 | 切分一致性 | 严格 0 (bit-exact) |
+| F2 | 逐片量化误差 | ~0.003 / ~0.002 |
+| F3 | 端到端认证误差 | ~0.002, 认证通过率 100% |
+
+### CNN 跨架构验证 (2 切片)
+
+| 场景 | 预期 | 实际 | 端到端总时延 |
+|------|------|------|-------------|
+| normal | certified | certified | 24,445 ms |
+| tamper_last | invalid | invalid | 22,948 ms |
+| skip_last | invalid | invalid | 19,648 ms |
+
+### 资源与吞吐量 (2 切片)
+
+| 角色 | CPU 均值 | RSS 峰值 |
+|------|----------|----------|
+| 协调节点 | 5.0% | 40 MB |
+| 工作节点 1 | 289% | 627 MB |
+| 工作节点 2 | 245% | 696 MB |
+
+吞吐量: 0.129 req/s (2 切片串行模式)
 
 ## 安全模型
 
@@ -159,17 +182,25 @@ $PY = "C:\Users\$env:USERNAME\AppData\Local\miniconda3\python.exe"
 - 相邻切片: `rescaled_outputs(π_i) ≈ rescaled_inputs(π_{i+1})`
 - 终端绑定: `rescaled_outputs(π_n) ≈ claimed_final_output`
 
+### 跨切片链接与隐私
+
+| 方案 | 结论 | 原因 |
+|------|------|------|
+| public + scale 对齐 | 可用 (当前采用) | 阈值 2 ULP，正常/攻击路径量级差距约 6 个数量级 |
+| hashed (Poseidon) | 不可行 | 独立电路 witness 不 bit-exact |
+| polycommit (KZG) | 不可行 | 同上 |
+
+**Proof-bound canonical handoff** (最新修复): 相邻切片传递的不再是执行浮点值，而是 proof/witness 绑定后的接口值。修复后，polycommit 和 hashed 正常路径已可通过 certified。
+
 ### Legacy Paths (Baseline/Reference Only)
 
-以下路径仅作基准对照，不是推荐的 v2 主链:
-- `v2/execution/pipeline.py` — 本地同步 pipeline
-- `v2/execution/deferred_pipeline.py` — 本地 deferred pipeline
+以下路径仅作基准对照:
+- `v2/execution/` — 本地 pipeline
 - `v2/services/master_coordinator.py` — 旧集中式 Master
-- `v2/experiments/distributed_e2e.py` — 旧分布式实验
 - `distributed/` + `scripts/` — v1 系统
 
 ## 学术定位
 
-- **声称**: 面向不可信 Worker 的应用层可验证推理；证明开销分摊到各节点
+- **声称**: 面向不可信 Worker 的应用层可验证推理；证明开销分摊到各节点；三阶段编译管线实现跨切片 scale 对齐
 - **不声称**: 分布式 prover 内部协议、隐私推理、恶意 prover 模型
 - **参考**: DSperse, NanoZK, VeriLLM, zkLLM, IMMACULATE, ZKML survey

@@ -28,8 +28,46 @@ from v2.common.types import (
 )
 from v2.common.commitments import compute_commitment
 from v2.common.logging import log_event
-from v2.compile.build_circuits import compute_registry_digest
+from v2.common.registry_manifest import build_client_registry_manifest, compute_registry_digest
 from v2.verifier.verify_chain import verify_chain, issue_certificate
+
+
+# ---------------------------------------------------------------------------
+# Parallel proving helpers
+# ---------------------------------------------------------------------------
+
+def _collect_proofs_parallel(
+    worker_urls: list[dict],
+    infer_records: list[dict],
+    req_id: str,
+    timeout: int = 600,
+) -> list[dict]:
+    """Send /prove to all workers concurrently and collect results."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    futures = {}
+    with ThreadPoolExecutor(max_workers=len(worker_urls)) as pool:
+        for rec in infer_records:
+            sid = rec["slice_id"]
+            url = rec["url"]
+            inp = rec["input_tensor"]
+
+            def _prove(u=url, i=inp, s=sid):
+                resp = requests.post(
+                    f"{u}/prove",
+                    json={"req_id": req_id, "input_tensor": i},
+                    timeout=timeout,
+                )
+                resp.raise_for_status()
+                return resp.json()
+
+            futures[pool.submit(_prove)] = sid
+
+    results = {}
+    for fut in as_completed(futures):
+        sid = futures[fut]
+        results[sid] = fut.result()
+    return [results[r["slice_id"]] for r in infer_records]
 
 
 def run_distributed_pipeline(
@@ -79,17 +117,29 @@ def run_distributed_pipeline(
         t0 = time.perf_counter()
 
         # HTTP POST 到 Prover-Worker: /infer_and_prove
-        resp = requests.post(
-            f"{url}/infer_and_prove",
-            json={"req_id": req_id, "input_tensor": current_input},
-            params={"fault_type": ft},
-            timeout=600,  # proving 可能需要较长时间
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        try:
+            resp = requests.post(
+                f"{url}/infer_and_prove",
+                json={"req_id": req_id, "input_tensor": current_input},
+                params={"fault_type": ft},
+                timeout=600,  # proving 可能需要较长时间
+            )
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            raise RuntimeError(
+                f"Worker {sid} at {url} request failed during infer_and_prove"
+            ) from exc
+
+        try:
+            data = resp.json()
+            output_tensor = data["output_tensor"]
+        except (ValueError, KeyError) as exc:
+            body_preview = resp.text[:200] if resp.text else "(empty)"
+            raise RuntimeError(
+                f"Worker {sid} at {url} returned invalid response: {body_preview}"
+            ) from exc
 
         rtt_ms = (time.perf_counter() - t0) * 1000
-        output_tensor = data["output_tensor"]
         proof_json = data.get("proof_json")
 
         # 审计 commitment (仅日志)
@@ -211,23 +261,18 @@ def run_distributed_pipeline(
             metrics=per_slice_metrics[i],
         ))
 
-    registry_data = [
-        {
-            "slice_id": a.slice_id,
-            "model_digest": a.model_digest,
-            "vk_path": a.vk_path,
-            "settings_path": a.settings_path,
-            "srs_path": a.srs_path,
-        }
-        for a in artifacts
-    ]
+    # Sort bundle slices by slice_id (canonical ordering)
+    bundle_slices.sort(key=lambda s: s.slice_id)
+
+    # Use canonical manifest for registry_digest (same as compile-time)
+    manifest = build_client_registry_manifest(artifacts)
 
     bundle = ProofBundle(
         bundle_version="1.0",
         req_id=req_id,
         created_at=datetime.now(timezone.utc).isoformat(),
         model_id="mnist_mlp",
-        registry_digest=compute_registry_digest(registry_data),
+        registry_digest=compute_registry_digest(manifest),
         slice_count=num_slices,
         initial_input=list(initial_input),
         claimed_final_output=list(provisional_output),
@@ -253,5 +298,189 @@ def run_distributed_pipeline(
             "num_slices": num_slices,
             "per_slice": per_slice_metrics,
             "architecture": "prover_worker",
+        },
+    }
+
+
+def run_distributed_pipeline_parallel(
+    initial_input: list[float],
+    artifacts: list[SliceArtifact],
+    worker_urls: list[dict],
+    fault_at: int | None = None,
+    fault_type: str = "tamper",
+) -> dict:
+    """
+    流水线并行版分布式 pipeline。
+
+    Phase 1 (串行): 依次调用各 Worker 的 /infer 接口完成推理链,
+                     每个 Worker 仅执行 ONNX 推理 (~1ms), 不生成证明。
+    Phase 2 (并行): 同时向所有 Worker 发送 /prove 请求,
+                     各 Worker 并行生成各自切片的 ZKP 证明。
+    Phase 3:        独立验证 + 组装 ProofBundle (与串行版相同)。
+    """
+    req_id = f"req-{uuid.uuid4().hex[:8]}-{int(time.time() * 1000)}"
+    artifacts = sorted(artifacts, key=lambda a: a.slice_id)
+    num_slices = len(artifacts)
+
+    print("=" * 60)
+    print(f"[Parallel] Pipeline: {num_slices} slices, req_id={req_id}")
+    print(f"  Fault: {f'type={fault_type} at slice {fault_at}' if fault_at else 'None'}")
+    print("=" * 60)
+
+    total_start = time.perf_counter()
+
+    # ═══════════ PHASE 1: SERIAL INFERENCE (fast) ═══════════
+    infer_start = time.perf_counter()
+    current_input = initial_input
+    infer_records = []  # {slice_id, url, input_tensor, output_tensor, exec_ms, fault_injected}
+
+    for artifact, worker in zip(artifacts, worker_urls):
+        sid = artifact.slice_id
+        url = worker["url"]
+        inject = (fault_at == sid)
+        ft = fault_type if inject else "none"
+
+        resp = requests.post(
+            f"{url}/infer",
+            json={"req_id": req_id, "input_tensor": current_input},
+            params={"fault_type": ft},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        infer_records.append({
+            "slice_id": sid,
+            "url": url,
+            "input_tensor": list(current_input),
+            "output_tensor": data["output_tensor"],
+            "exec_ms": data.get("exec_ms", 0),
+            "fault_injected": data.get("fault_injected", False),
+        })
+        current_input = data["output_tensor"]
+
+    infer_ms = (time.perf_counter() - infer_start) * 1000
+    provisional_output = current_input
+    print(f"  [Phase 1] Serial inference done: {infer_ms:.1f}ms")
+
+    # ═══════════ PHASE 2: PARALLEL PROVING ═══════════
+    prove_start = time.perf_counter()
+    prove_results = _collect_proofs_parallel(worker_urls, infer_records, req_id)
+    prove_ms_total = (time.perf_counter() - prove_start) * 1000
+    print(f"  [Phase 2] Parallel proving done: {prove_ms_total:.0f}ms")
+
+    # ═══════════ PHASE 3: BUILD PROOF JOBS + VERIFY ═══════════
+    proofs_dir = os.path.join(PROJECT_ROOT, "v2", "artifacts", "received_proofs", req_id)
+    os.makedirs(proofs_dir, exist_ok=True)
+
+    execution_records = []
+    proof_jobs = []
+    per_slice_metrics = []
+
+    for i, (artifact, irec, presult) in enumerate(zip(artifacts, infer_records, prove_results)):
+        sid = artifact.slice_id
+        input_commit = compute_commitment(req_id, sid, artifact.model_digest, irec["input_tensor"])
+        output_commit = compute_commitment(req_id, sid, artifact.model_digest, irec["output_tensor"])
+
+        execution_records.append(ExecutionRecord(
+            req_id=req_id, slice_id=sid,
+            input_commit=input_commit, output_commit=output_commit,
+            output_tensor=irec["output_tensor"],
+            input_tensor=irec["input_tensor"],
+            exec_ms=round(irec["exec_ms"], 2),
+        ))
+
+        proof_data = presult.get("proof_json")
+        proof_path = None
+        error = None
+        if proof_data:
+            proof_path = os.path.join(proofs_dir, f"slice_{sid}_proof.json")
+            with open(proof_path, "w") as f:
+                json.dump(proof_data, f)
+        else:
+            error = "no proof received from worker"
+
+        proof_jobs.append(ProofJob(
+            job_id=f"job-{sid}-{uuid.uuid4().hex[:8]}",
+            req_id=req_id, slice_id=sid,
+            input_commit=input_commit, output_commit=output_commit,
+            artifact=artifact, proof_path=proof_path, proof_data=proof_data,
+            status=ProofJobStatus.DONE if not error else ProofJobStatus.FAILED,
+            error=error,
+        ))
+
+        per_slice_metrics.append({
+            "slice_id": sid,
+            "exec_ms": irec["exec_ms"],
+            "prove_ms": presult.get("prove_ms", 0),
+            "worker_total_ms": irec["exec_ms"] + presult.get("prove_ms", 0),
+            "rtt_ms": 0,  # not meaningful in parallel mode
+            "fault_injected": irec["fault_injected"],
+        })
+
+    # Verification
+    verify_start = time.perf_counter()
+    chain_result = verify_chain(
+        req_id, proof_jobs, artifacts,
+        initial_input=initial_input,
+        provisional_output=provisional_output,
+    )
+    verify_ms = (time.perf_counter() - verify_start) * 1000
+    certificate = issue_certificate(chain_result, artifacts, verify_ms)
+    total_ms = (time.perf_counter() - total_start) * 1000
+
+    total_prove_ms = sum(m["prove_ms"] for m in per_slice_metrics)
+    total_exec_ms = sum(m["exec_ms"] for m in per_slice_metrics)
+
+    # Build ProofBundle
+    bundle_slices = []
+    for i, (artifact, presult) in enumerate(zip(artifacts, prove_results)):
+        bundle_slices.append(ProofBundleSlice(
+            slice_id=artifact.slice_id,
+            model_digest=artifact.model_digest,
+            proof_json=presult.get("proof_json") or {},
+            worker_claimed_output=execution_records[i].output_tensor,
+            metrics=per_slice_metrics[i],
+        ))
+    bundle_slices.sort(key=lambda s: s.slice_id)
+    manifest = build_client_registry_manifest(artifacts)
+
+    bundle = ProofBundle(
+        bundle_version="1.0",
+        req_id=req_id,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        model_id="mnist_mlp",
+        registry_digest=compute_registry_digest(manifest),
+        slice_count=num_slices,
+        initial_input=list(initial_input),
+        claimed_final_output=list(provisional_output),
+        slices=bundle_slices,
+        server_side_advisory={
+            "status": certificate.status,
+            "all_single_proofs_verified": certificate.all_single_proofs_verified,
+            "all_links_verified": certificate.all_links_verified,
+            "note": "non-authoritative advisory only",
+        },
+    )
+
+    print(f"  [Parallel] total={total_ms:.0f}ms "
+          f"infer={infer_ms:.0f}ms prove_wall={prove_ms_total:.0f}ms "
+          f"verify={verify_ms:.0f}ms status={certificate.status}")
+
+    return {
+        "req_id": req_id,
+        "proof_bundle": bundle,
+        "server_side_advisory": bundle.server_side_advisory,
+        "metrics": {
+            "total_ms": round(total_ms, 2),
+            "execution_ms": round(infer_ms + prove_ms_total, 2),
+            "total_exec_ms": round(total_exec_ms, 2),
+            "total_prove_ms": round(total_prove_ms, 2),
+            "prove_wall_ms": round(prove_ms_total, 2),
+            "infer_serial_ms": round(infer_ms, 2),
+            "client_verification_ms": round(verify_ms, 2),
+            "num_slices": num_slices,
+            "per_slice": per_slice_metrics,
+            "architecture": "prover_worker_parallel",
         },
     }

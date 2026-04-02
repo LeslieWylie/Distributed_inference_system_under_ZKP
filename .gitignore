@@ -15,7 +15,7 @@ v2/logs/
 models/*.onnx
 models/*.onnx.data
 models/exp_*/
-models/.mnist_data/
+models/.mnist_data/\nmodels/.mnist_cache/\n\n# MNIST dataset (downloaded at runtime)\ndata/
 
 # Temporary data files
 models/*_tampered.json
@@ -82,7 +82,8 @@ conda-*/
 ~$*.docx
 ~$*.pptx
 
-# Root-level stray legacy files
+# Root-level stray binary files
+中期进展情况检查.docx
 中期报告_*.md
 武垚乐-软件开发.tex
 ~$*.xlsx

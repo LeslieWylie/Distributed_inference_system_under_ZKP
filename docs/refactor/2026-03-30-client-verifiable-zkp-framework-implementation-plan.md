@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Refactor v2 into a client-verifiable distributed ZKP framework where Workers and Coordinator are untrusted, the Coordinator returns a proof bundle as the primary artifact, and the client independently verifies correctness using local registry artifacts.
+**Goal:** Refactor v2 into a client-verifiable distributed ZKP framework where Workers and Coordinator are untrusted, the Coordinator returns a proof bundle as the primary artifact, and the client independently verifies correctness using local registry artifacts with fail-closed bundle validation.
 
-**Architecture:** Keep Prover-Workers as the proving edge, downgrade the Coordinator into an untrusted bundle assembler, add a client-facing bundle verification path, and converge experiments and docs around `ProofBundle + Client Verification` as the single v2 mainline.
+**Architecture:** Keep Prover-Workers as the proving edge, downgrade the Coordinator into an untrusted bundle assembler, add a client-facing bundle verification path, define one canonical registry manifest for compile/runtime/client use, and converge experiments and docs around `ProofBundle + Client Verification` as the single v2 mainline.
 
 **Tech Stack:** Python 3.13, EZKL 23.0.5, FastAPI, ONNX Runtime, dataclasses, JSON-based bundle artifacts.
 
@@ -14,16 +14,18 @@
 
 ### Files to Create
 
-- `v2/verifier/bundle_verifier.py` — Client-oriented verification entrypoint that consumes `ProofBundle + Registry` and returns the final trusted verdict.
+- `v2/common/registry_manifest.py` — Canonical registry manifest builder/digest helper shared by compile, Coordinator, and client verifier.
 
 ### Files to Modify
 
-- `v2/common/types.py` — Add `ProofBundle`, `ProofBundleSlice`, `ClientVerificationResult`, and downgrade `Certificate` semantics.
-- `v2/compile/build_circuits.py` — Add stable registry digest generation and expose registry metadata needed by clients.
+- `v2/common/types.py` — Consolidate `ProofBundle`, `ProofBundleSlice`, `ClientVerificationResult`, and downgrade `Certificate` semantics.
+- `v2/compile/build_circuits.py` — Persist canonical registry metadata needed by clients.
 - `v2/services/distributed_coordinator.py` — Return `ProofBundle` as the primary artifact and downgrade server certificate to advisory.
 - `v2/verifier/verify_chain.py` — Extract reusable verification internals so bundle verification is not tied to a trusted server workflow.
+- `v2/verifier/bundle_verifier.py` — Harden bundle verification with canonical metadata checks and fail-closed malformed-bundle handling.
 - `v2/experiments/refactored_e2e.py` — Switch to bundle generation plus client-side verification.
 - `v2/experiments/resource_metrics.py` — Report bundle generation and client verification metrics on the new mainline.
+- `v2/experiments/smoke_test.py` — Remove stale `certificate`-based expectations or explicitly downgrade it.
 - `README.md` — Rewrite the main workflow around client verification.
 - `v2/docs/protocol.md` — Rewrite trust boundaries and protocol flow.
 - `v2/docs/threat_model.md` — Rewrite the threat model for the strong-engineering trust model.
@@ -34,6 +36,8 @@
 - `v2/execution/deferred_pipeline.py`
 - `v2/services/master_coordinator.py`
 - `v2/experiments/distributed_e2e.py`
+- `v2/experiments/e2e_certified.py`
+- `v2/experiments/scalability.py`
 
 ### Validation Targets
 
@@ -42,15 +46,16 @@
 
 ---
 
-## Task 1: Add Bundle Data Model And Registry Digest
+## Task 1: Consolidate Bundle Data Model And Registry Digest
 
 **Files:**
 - Modify: `v2/common/types.py`
+- Create: `v2/common/registry_manifest.py`
 - Modify: `v2/compile/build_circuits.py`
 
-- [ ] **Step 1: Extend shared types with bundle-first structures**
+- [ ] **Step 1: Consolidate shared types with bundle-first structures**
 
-Add client-verification-facing dataclasses to `v2/common/types.py`.
+Ensure `v2/common/types.py` exposes the client-verification-facing dataclasses with stable field names and semantics.
 
 ```python
 @dataclass
@@ -106,28 +111,43 @@ class Certificate:
     details: dict = field(default_factory=dict)
 ```
 
-- [ ] **Step 3: Add stable registry digest helper**
+- [ ] **Step 3: Add canonical registry manifest helper**
 
-In `v2/compile/build_circuits.py`, add a helper to compute a deterministic digest over registry JSON content.
+Create `v2/common/registry_manifest.py` and define the single manifest structure used by compile-time metadata, Coordinator bundle generation, and client verification. The manifest MUST exclude host-local or transient absolute paths.
 
 ```python
-def compute_registry_digest(registry_data: list[dict]) -> str:
-    payload = json.dumps(registry_data, sort_keys=True).encode("utf-8")
+def build_client_registry_manifest(artifacts: list[SliceArtifact]) -> list[dict]:
+    return [
+        {
+            "slice_id": a.slice_id,
+            "model_digest": a.model_digest,
+            "input_scale": a.input_scale,
+            "output_scale": a.output_scale,
+            "param_scale": a.param_scale,
+        }
+        for a in sorted(artifacts, key=lambda item: item.slice_id)
+    ]
+
+
+def compute_registry_digest(manifest: list[dict]) -> str:
+    payload = json.dumps(manifest, sort_keys=True).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 ```
 
-Also add the necessary import:
+Also add the necessary imports.
 
 ```python
 import hashlib
+import json
 ```
 
-- [ ] **Step 4: Persist registry metadata including digest**
+- [ ] **Step 4: Persist registry metadata including canonical digest**
 
-Update `build_registry()` so it writes both the slice registry and a metadata file usable by clients.
+Update `build_registry()` so it writes both the slice registry and a metadata file usable by clients. The digest MUST be computed from the canonical manifest helper introduced above, not from a second ad-hoc dictionary shape.
 
 ```python
-registry_digest = compute_registry_digest(registry_data)
+manifest = build_client_registry_manifest(artifacts)
+registry_digest = compute_registry_digest(manifest)
 metadata_path = os.path.join(registry_dir, "registry", "registry_metadata.json")
 
 with open(metadata_path, "w") as f:
@@ -135,6 +155,7 @@ with open(metadata_path, "w") as f:
         "registry_digest": registry_digest,
         "slice_count": len(registry_data),
         "model_type": model_type,
+        "manifest": manifest,
     }, f, indent=2)
 ```
 
@@ -143,14 +164,14 @@ with open(metadata_path, "w") as f:
 Run:
 
 ```powershell
-& "C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe" -m py_compile v2/common/types.py v2/compile/build_circuits.py
+& "C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe" -m py_compile v2/common/types.py v2/common/registry_manifest.py v2/compile/build_circuits.py
 ```
 
 Expected: no output and exit code `0`.
 
 ---
 
-## Task 2: Introduce Client Bundle Verifier
+## Task 2: Introduce Client Bundle Verifier And Fail-Closed Validation
 
 **Files:**
 - Create: `v2/verifier/bundle_verifier.py`
@@ -177,9 +198,9 @@ def build_client_verification_result(
     )
 ```
 
-- [ ] **Step 2: Create the bundle verification module**
+- [ ] **Step 2: Harden the bundle verification module**
 
-Add `v2/verifier/bundle_verifier.py` with a client-facing API.
+Refine `v2/verifier/bundle_verifier.py` so the existing client-facing API is the authoritative verification entrypoint.
 
 ```python
 from __future__ import annotations
@@ -226,7 +247,21 @@ def verify_bundle(bundle: ProofBundle, artifacts: list[SliceArtifact]) -> Client
     return build_client_verification_result(chain_result, verify_ms)
 ```
 
-- [ ] **Step 3: Ensure bundle verification writes temp proof files when needed**
+- [ ] **Step 3: Add explicit bundle metadata validation before proof verification**
+
+Extend `bundle_verifier.py` with a pre-validation step that fail-closes before calling `verify_chain()`. The validator MUST check:
+
+- supported `bundle_version`
+- `slice_count == len(bundle.slices)`
+- `slice_id` strictly increasing
+- no duplicate slices
+- no missing registry slice
+- `bundle.registry_digest == local registry metadata digest`
+- `slice_item.model_digest == artifact.model_digest`
+
+On any mismatch, return `ClientVerificationResult(status="invalid", ...)` instead of raising.
+
+- [ ] **Step 4: Ensure bundle verification writes temp proof files when needed**
 
 Because `verify_proof()` currently consumes a proof path, update `bundle_verifier.py` to materialize temporary proof files before creating `ProofJob` items.
 
@@ -245,7 +280,11 @@ def _write_temp_proof(req_id: str, slice_id: int, proof_json: dict) -> str:
 
 Use the returned path in each `ProofJob`.
 
-- [ ] **Step 4: Validate the new verifier module imports cleanly**
+- [ ] **Step 5: Remove assertion-driven crash paths from client-facing verification**
+
+`verify_chain()` currently contains hard assertions on proof count and slice alignment. Replace those assertions with explicit failure accumulation, or catch `AssertionError` and convert it into a structured `invalid` result in `bundle_verifier.py`. The client verifier MUST fail closed, not crash, on malformed bundle input.
+
+- [ ] **Step 6: Validate the new verifier module imports cleanly**
 
 Run:
 
@@ -254,6 +293,17 @@ Run:
 ```
 
 Expected: no output and exit code `0`.
+
+- [ ] **Step 7: Add malformed-bundle verification checks**
+
+Run or script at least the following negative cases against `verify_bundle()`:
+
+- duplicate `slice_id`
+- missing last slice
+- reversed slice order
+- forged `registry_digest`
+
+Expected: each case returns `status == "invalid"` without an uncaught exception.
 
 ---
 
@@ -273,7 +323,7 @@ from v2.common.types import (
     SliceArtifact, ExecutionRecord, ProofJob, ProofJobStatus,
     ProofBundle, ProofBundleSlice,
 )
-from v2.compile.build_circuits import compute_registry_digest
+from v2.common.registry_manifest import build_client_registry_manifest, compute_registry_digest
 ```
 
 - [ ] **Step 2: Build bundle slices from collected worker proofs**
@@ -294,26 +344,17 @@ for metric, artifact, proof_data in zip(per_slice_metrics, artifacts, proof_data
 
 - [ ] **Step 3: Replace primary response artifact with `ProofBundle`**
 
-Construct and return a bundle object even if server-side advisory is retained.
+Construct and return a bundle object even if server-side advisory is retained. The bundle digest MUST be computed from the same canonical manifest persisted at compile time.
 
 ```python
-registry_data = [
-    {
-        "slice_id": a.slice_id,
-        "model_digest": a.model_digest,
-        "vk_path": a.vk_path,
-        "settings_path": a.settings_path,
-        "srs_path": a.srs_path,
-    }
-    for a in artifacts
-]
+manifest = build_client_registry_manifest(artifacts)
 
 bundle = ProofBundle(
     bundle_version="1.0",
     req_id=req_id,
     created_at=datetime.now(timezone.utc).isoformat(),
     model_id="mnist_mlp",
-    registry_digest=compute_registry_digest(registry_data),
+    registry_digest=compute_registry_digest(manifest),
     slice_count=num_slices,
     initial_input=list(initial_input),
     claimed_final_output=list(provisional_output),
@@ -359,12 +400,17 @@ Run:
 
 Expected: no output and exit code `0`.
 
+- [ ] **Step 6: Keep bundle slices canonicalized**
+
+Before constructing `ProofBundle`, sort `bundle_slices` by `slice_id` and assert locally in Coordinator code that the produced order matches `artifacts`. This assertion is allowed inside Coordinator because it guards local assembly logic; client-side verification must still reject malformed bundles independently.
+
 ---
 
 ## Task 4: Switch Main E2E Experiment To Client Verification
 
 **Files:**
 - Modify: `v2/experiments/refactored_e2e.py`
+- Modify: `v2/experiments/smoke_test.py`
 
 - [ ] **Step 1: Import the client verifier**
 
@@ -423,7 +469,19 @@ Use wording like:
 print(f"  [{mark}] {test['name']}: client={status} advisory={r.get('server_side_advisory', {}).get('status', 'unknown')}")
 ```
 
-- [ ] **Step 5: Run the main E2E experiment once**
+- [ ] **Step 5: Update `smoke_test.py` to stop reading `result["certificate"]`**
+
+Replace all `r["certificate"]` lookups in `v2/experiments/smoke_test.py` with:
+
+```python
+bundle = r["proof_bundle"]
+client_result = verify_bundle(bundle, artifacts)
+status = client_result.status
+```
+
+If `smoke_test.py` is not maintained, mark it clearly as legacy and exclude it from the mainline validation set.
+
+- [ ] **Step 6: Run the main E2E experiment once**
 
 Run:
 
@@ -432,6 +490,16 @@ Run:
 ```
 
 Expected: normal case produces client `certified`; tamper/skip/random/replay cases produce client `invalid`.
+
+- [ ] **Step 7: Run `smoke_test.py` after migration**
+
+Run:
+
+```powershell
+& "C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe" -u v2/experiments/smoke_test.py
+```
+
+Expected: no `KeyError: 'certificate'`; smoke results use client verdict or are clearly marked legacy.
 
 ---
 
@@ -483,14 +551,15 @@ else:
     fn += 1
 ```
 
-- [ ] **Step 4: Update metrics output schema**
+- [ ] **Step 4: Update metrics output schema without overclaiming system scope**
 
 Include the new fields.
 
 ```python
 results = {
     "num_slices": num_slices,
-    "resource_profile": resource_profile,
+    "coordinator_local_resource_profile": resource_profile,
+    "resource_profile_scope": "coordinator_local",
     "bundle_generation_ms": round(bundle_ms, 2),
     "client_verification_ms": round(client_verify_ms, 2),
     "throughput": {
@@ -507,6 +576,8 @@ results = {
 }
 ```
 
+Do not claim this field is aggregated system CPU/RSS unless worker metrics are explicitly collected and summed.
+
 - [ ] **Step 5: Run the metrics experiment**
 
 Run:
@@ -515,7 +586,7 @@ Run:
 & "C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe" -u v2/experiments/resource_metrics.py
 ```
 
-Expected: JSON is written successfully and includes `bundle_generation_ms`, `client_verification_ms`, `client_verdict`, and `server_side_advisory`.
+Expected: JSON is written successfully and includes `bundle_generation_ms`, `client_verification_ms`, `client_verdict`, `server_side_advisory`, and an explicit `resource_profile_scope`.
 
 ---
 
@@ -572,6 +643,8 @@ Not trusted:
 - network transport
 ```
 
+Also remove any residual wording that implies “Master integrity” is a correctness prerequisite in the new client-verifiable mainline.
+
 - [ ] **Step 4: Mark legacy paths as baseline/reference**
 
 In README and protocol docs, explicitly downgrade:
@@ -582,6 +655,8 @@ The following paths are retained as baseline/reference only and are not the reco
 - `v2/execution/deferred_pipeline.py`
 - `v2/services/master_coordinator.py`
 - `v2/experiments/distributed_e2e.py`
+- `v2/experiments/e2e_certified.py`
+- `v2/experiments/scalability.py`
 ```
 
 - [ ] **Step 5: Perform a consistency read-through**
@@ -592,6 +667,8 @@ Check that the following phrases are true everywhere:
 - Client verification is final
 - server certificate is advisory only
 - Proof Bundle is the primary artifact
+
+Also ensure docs do not present single-machine `127.0.0.1` experiments as evidence of cross-host deployment.
 
 No command required. Manually review the modified docs before finishing.
 
@@ -633,7 +710,20 @@ Expected:
 - tamper cases are client `invalid`
 - result JSON stores both advisory and client verification sections
 
-- [ ] **Step 3: Re-run the metrics path**
+- [ ] **Step 3: Re-run `smoke_test.py` or explicitly retire it**
+
+Run:
+
+```powershell
+& "C:\Users\v-yaolewu\AppData\Local\miniconda3\python.exe" -u v2/experiments/smoke_test.py
+```
+
+Expected:
+
+- no `result["certificate"]` dependency remains in the maintained version
+- smoke output uses client verdict or prints a clear legacy warning and exits cleanly
+
+- [ ] **Step 4: Re-run the metrics path**
 
 Run:
 
@@ -647,22 +737,21 @@ Expected:
 - bundle-related fields exist
 - client verdict is present and authoritative
 
-- [ ] **Step 4: Confirm Definition of Done against the PRD**
+- [ ] **Step 5: Confirm Definition of Done against the PRD**
 
 Checklist:
 
 ```markdown
 - Coordinator returns `ProofBundle`
 - Client can independently verify from `ProofBundle + Registry`
+- `registry_digest` is computed from one canonical manifest definition
+- malformed bundles return `invalid` instead of uncaught exceptions
 - server advisory is not the trust root
 - main experiments use client verification as final verdict
 - docs match code semantics
 - old paths are downgraded, not presented as mainline
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit only if explicitly requested**
 
-```bash
-git add v2/common/types.py v2/compile/build_circuits.py v2/verifier/verify_chain.py v2/verifier/bundle_verifier.py v2/services/distributed_coordinator.py v2/experiments/refactored_e2e.py v2/experiments/resource_metrics.py README.md v2/docs/protocol.md v2/docs/threat_model.md docs/refactor/2026-03-30-client-verifiable-zkp-framework-prd.md docs/refactor/2026-03-30-client-verifiable-zkp-framework-implementation-plan.md
-git commit -m "refactor: add client-verifiable proof bundle workflow"
-```
+Do not include an automatic commit step in the default execution path. If a commit is required, create it only after the verification steps above pass and the user explicitly requests a commit.

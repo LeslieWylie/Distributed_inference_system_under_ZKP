@@ -1,6 +1,6 @@
 # 开发报告 — 面向分布式推理的零知识证明框架
 
-> 最后更新: 2026-03-30
+> 最后更新: 2026-04-02
 > 仓库: https://gitee.com/yaolewu/distributed_inference_system_under_-zkp.git
 
 ---
@@ -132,10 +132,17 @@ C:\ZKP\
 - 参数量: 109,386
 - 训练: MNIST 数据集, 3 epochs, Adam optimizer
 - 测试准确率: **97.24%** (9724/10000)
-- 切分: 2 片 (Slice 1: 784→64, Slice 2: 64→10)
+- 切分: 2 / 4 / 8 片
 - ONNX 导出: opset 18, `dynamo=False` (EZKL tract 兼容)
 
-### 6.2 旧模型 (baseline)
+### 6.2 MNIST CNN
+
+- 架构: `Conv2d(1→8, 3×3) → ReLU → Flatten → FC(5408→10)`
+- 参数量: ~54,170
+- 切分: 2 片 (卷积层 + 全连接层)
+- 用途: 验证框架对卷积网络的适配能力
+
+### 6.3 旧模型 (baseline)
 
 - ConfigurableModel: 8 层 FC, hidden_dim=8, ~500 参数
 - 仅作 v1 基准对照，不用于论文主要实验
@@ -148,22 +155,57 @@ C:\ZKP\
 
 | 攻击类型 | 预期 | 结果 | 检测机制 |
 |----------|------|------|----------|
-| normal (正常推理) | certified | ✓ certified | — |
-| tamper (output+999) | invalid | ✓ invalid | Terminal binding |
-| skip (全零输出) | invalid | ✓ invalid | Terminal binding |
-| random (随机噪声) | invalid | ✓ invalid | Terminal binding |
-| replay (固定值) | invalid | ✓ invalid | Terminal binding |
+| normal | certified | ✓ | — |
+| tamper (output+999) | invalid | ✓ | Terminal binding |
+| skip (全零输出) | invalid | ✓ | Terminal binding |
+| random (随机噪声) | invalid | ✓ | Terminal binding |
+| replay (固定值) | invalid | ✓ | Terminal binding |
 
-### 7.2 G3: 延迟分解
+### 7.2 G4: 可扩展性 (2 / 4 / 8 切片)
 
-| 阶段 | 耗时 | 占比 |
+| 切片数 | 证明总耗时 | 客户端验证 | 端到端总时延 |
+|--------|-----------|-----------|-------------|
+| 2 | 7,356 ms | 174 ms | 7,845 ms |
+| 4 | 19,176 ms | 438 ms | 20,289 ms |
+| 8 | 32,076 ms | 518 ms | 33,559 ms |
+
+### 7.3 保真度 (F1 / F2 / F3)
+
+| 指标 | 结果 |
+|------|------|
+| F1 (切分一致性) | 0 (bit-exact) |
+| F2 (量化误差) | ~0.003 / ~0.002 |
+| F3 (端到端认证) | ~0.002，认证 100% |
+
+### 7.4 CNN 跨架构验证 (2 切片)
+
+| 场景 | 预期 | 实际 | 总时延 |
+|------|------|------|--------|
+| normal | certified | certified | 24,445 ms |
+| tamper_last | invalid | invalid | 22,948 ms |
+| skip_last | invalid | invalid | 19,648 ms |
+
+### 7.5 资源与吞吐量 (2 切片)
+
+| 角色 | CPU 均值 | RSS 峰值 |
+|------|----------|----------|
+| 协调节点 | 5.0% | 40 MB |
+| 工作节点 1 | 289% | 627 MB |
+| 工作节点 2 | 245% | 696 MB |
+
+吞吐量: 0.129 req/s (2 切片串行)
+
+### 7.6 链接精度结论
+
+| 方案 | 结论 | 原因 |
 |------|------|------|
-| ONNX 推理 | ~1ms | 0.02% |
-| EZKL 证明生成 | ~4500ms | 88% |
-| 独立验证 | ~130ms | 2.5% |
-| 总端到端 | ~5100ms | 100% |
+| public + scale 对齐 | 可用 (当前采用) | 阈值 2 ULP |
+| hashed (Poseidon) | 不可行* | witness 不 bit-exact |
+| polycommit (KZG) | 不可行* | witness 不 bit-exact |
 
-### 7.3 关键观察
+*\*注: 通过 proof-bound canonical handoff 修复后，polycommit 和 hashed 正常路径已可通过 certified。残余工作是将旧攻击场景语义更新为新规则。*
+
+### 7.7 关键观察
 
 - 证明生成占总耗时 88%，这是 ZKP 系统的固有特性
 - 推理耗时仅 1ms — 分布式架构不增加推理延迟
@@ -192,10 +234,10 @@ C:\ZKP\
 
 ### 8.3 已知限制
 
-1. 链式链接使用浮点近似 (ε=0.01)，非密码学精确匹配
+1. 链式链接默认使用浮点近似 (ε=2 ULP)，非密码学精确匹配
 2. Master/Verifier 假设可信
 3. Sub-ε 扰动在量化噪声内不可区分
-4. 未来: `polycommit` + `swap_proof_commitments()` 实现精确匹配
+4. 通过 proof-bound canonical handoff，polycommit 和 hashed 正常路径已可 certified；尚需统一更新旧攻击语义并扩展到 deferred/parallel 路径
 
 ---
 
@@ -220,3 +262,13 @@ C:\ZKP\
 - **全链路信任**: proof 绑定真实 I/O，terminal binding 检测篡改
 - **跨主机支持**: Worker 绑定 0.0.0.0, workers.json 可配置 IP
 - 5/5 攻击测试全部通过
+
+### v2 多模型 + 可扩展性 + 链接精度 (2026-04-02)
+- **MNIST CNN** 模型支持 (Conv2d + FC, 2 切片 E2E)
+- **2/4/8 切片可扩展性实验**: 12 用例全通过
+- **F1/F2/F3 保真度**: F1=0 (bit-exact)，F2/F3 误差 ~10⁻³
+- **资源占用 + 吞吐量**: Worker CPU ~250–290%, RSS ~600–700MB
+- **三阶段编译管线**: scale 对齐使链接阈值收紧至 2 ULP
+- **public / hashed / polycommit 系统性验证**: 定位并修复根因
+- **Proof-bound canonical handoff**: 相邻切片传递 proof/witness 绑定接口值，polycommit 和 hashed 正常路径已 certified
+- 32/32 自动化测试通过
