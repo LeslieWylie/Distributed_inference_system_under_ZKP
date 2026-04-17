@@ -6,8 +6,8 @@
 | Phase | Doc | Owner Agent | Status | Last Update | Commit | Notes |
 |-------|-----|-------------|--------|-------------|--------|-------|
 | 0 | 01-phase0-freeze-v2.md | phase0-freeze-agent | ☑ done | 2026-04-17 | (see gitee/master) | v2-final tag pushed; v3 skeleton created |
-| 1 | 02-phase1-rust-sonobe.md | phase1-rust-sonobe-agent | ↺ under review | 2026-04-17 | (this commit) | Rust 1.95.0 + Sonobe @ 63f2930; nova_hello verify=true; subprocess bridge green |
-| 2 | 03-phase2-mnist-r1cs.md | (unassigned) | ☐ not started | - | - | - |
+| 1 | 02-phase1-rust-sonobe.md | phase1-rust-sonobe-agent | ☑ done | 2026-04-17 | d1a6479 | Rust 1.95.0 + Sonobe @ 63f2930; nova_hello verify=true; subprocess bridge green |
+| 2 | 03-phase2-mnist-r1cs.md | phase2-mnist-r1cs-agent | ☑ done | 2026-04-17 | 8b01000 | MnistSlice1/2 FCircuit<Fr>; 100/100 consistency cases; max ε=0.000703 < 0.01; mnist_single_slice example verify=true |
 | 3 | 04-phase3-nova-ivc.md | (unassigned) | ☐ not started | - | - | - |
 | 4 | 05-phase4-privacy-pedersen.md | (unassigned) | ☐ not started | - | - | - |
 | 5 | 06-phase5-collaborative-folding.md | (unassigned) | ☐ not started (optional, 等用户确认) | - | - | - |

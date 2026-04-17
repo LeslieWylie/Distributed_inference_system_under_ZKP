@@ -17,7 +17,13 @@ ark-serialize = { workspace = true }
 ark-std = { workspace = true }
 anyhow = { workspace = true }
 rand = { workspace = true }
+serde_json = { workspace = true }
+v3-circuit = { path = "../v3-circuit" }
 
 [[example]]
 name = "nova_hello"
 path = "examples/nova_hello.rs"
+
+[[example]]
+name = "mnist_single_slice"
+path = "examples/mnist_single_slice.rs"

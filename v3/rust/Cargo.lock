@@ -959,6 +959,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
+ "serde_derive",
 ]
 
 [[package]]
@@ -1216,9 +1217,14 @@ name = "v3-circuit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ark-bn254",
  "ark-ff",
  "ark-r1cs-std 0.5.0 (git+https://github.com/flyingnobita/r1cs-std_yelhousni?rev=b4bab0c)",
  "ark-relations",
+ "ark-std 0.5.0 (git+https://github.com/arkworks-rs/std)",
+ "folding-schemes",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1245,6 +1251,8 @@ dependencies = [
  "ark-std 0.5.0 (git+https://github.com/arkworks-rs/std)",
  "folding-schemes",
  "rand",
+ "serde_json",
+ "v3-circuit",
 ]
 
 [[package]]
