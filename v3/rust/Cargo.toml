@@ -21,13 +21,13 @@ repository = "https://gitee.com/yaolewu/distributed_inference_system_under_-zkp"
 # privacy-scaling-explorations/sonobe via redirect).  We pin a specific commit
 # per the Phase 1 spec (no `branch = "main"`).
 #
-# Pinned rev: 63f2930d363150d4490ce2c4be8e0c25c2e1d92c  (2026-02-19, main HEAD)
+# Pinned rev: 2035e33ab17a914c135e3c42b4d1da932201f4f7  (dev branch, fixes #211/#227 Pedersen circuit bug)
 # ---------------------------------------------------------------------------
 [workspace.dependencies]
 # Sonobe folding-schemes.
 # Note: `default = ["parallel"]` upstream; keep defaults so the espresso
 # sum-check prover compiles (it requires the rayon-backed `cfg_into_iter!`).
-folding-schemes = { git = "https://github.com/privacy-ethereum/sonobe", rev = "63f2930d363150d4490ce2c4be8e0c25c2e1d92c" }
+folding-schemes = { git = "https://github.com/privacy-ethereum/sonobe.git", rev = "2035e33ab17a914c135e3c42b4d1da932201f4f7" }
 
 # Arkworks family — nominally 0.5.x, but real resolution comes from the
 # [patch.crates-io] table below (Sonobe's workspace requires git versions with
@@ -66,8 +66,8 @@ ark-poly = { git = "https://github.com/arkworks-rs/algebra" }
 ark-relations = { git = "https://github.com/arkworks-rs/snark" }
 ark-snark = { git = "https://github.com/arkworks-rs/snark" }
 
-ark-crypto-primitives = { git = "https://github.com/flyingnobita/crypto-primitives", rev = "f559264" }
-ark-r1cs-std = { git = "https://github.com/flyingnobita/r1cs-std_yelhousni", rev = "b4bab0c" }
+ark-crypto-primitives = { git = "https://github.com/winderica/crypto-primitives", rev = "af003fc" }
+ark-r1cs-std = { git = "https://github.com/winderica/r1cs-std", rev = "ae8283a" }         # "sw-fix-updated" branch — matches Sonobe dev@2035e33
 
 ark-std = { git = "https://github.com/arkworks-rs/std" }
 ark-poly-commit = { git = "https://github.com/arkworks-rs/poly-commit" }
@@ -80,7 +80,7 @@ ark-mnt4-298 = { git = "https://github.com/arkworks-rs/algebra" }
 ark-mnt6-298 = { git = "https://github.com/arkworks-rs/algebra" }
 
 [patch."https://github.com/arkworks-rs/circom-compat"]
-ark-circom = { git = "https://github.com/dmpierre/circom-compat", rev = "0dfd773c" }
+ark-circom = { git = "https://github.com/winderica/circom-compat", rev = "d94cc71" }
 
 [profile.release]
 lto = "thin"

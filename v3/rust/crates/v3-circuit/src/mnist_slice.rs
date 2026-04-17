@@ -48,7 +48,7 @@ impl MnistSliceParams {
 }
 
 /// Generic helper that `Slice1`/`Slice2` share.
-fn build_slice_circuit<F: PrimeField>(
+fn build_slice_circuit(
     params: &MnistSliceParams,
     expected_input_dim: usize,
     expected_output_dim: usize,
@@ -74,7 +74,9 @@ fn build_slice_circuit<F: PrimeField>(
     Ok((params.slice.clone(), params.scale))
 }
 
-fn step_native_vec<F: PrimeField>(
+/// Native-level slice application. Mirrors `generate_slice_constraints`.
+/// Made `pub` so Phase 3's unified step circuit can chain slices.
+pub fn step_native_vec<F: PrimeField>(
     slice: &SlicePayload,
     scale: usize,
     z_i: &[F],
@@ -97,9 +99,10 @@ fn step_native_vec<F: PrimeField>(
     z_out
 }
 
-/// Run the slice at the R1CS level. Emits one activation `FpVar<F>` per
-/// output neuron (padded to `STATE_DIM`).
-fn generate_slice_constraints<F: PrimeField>(
+/// R1CS-level slice application on a padded state vector. Made `pub` so
+/// Phase 3's unified step circuit can compose slice1 then slice2 within a
+/// single Nova step.
+pub fn generate_slice_constraints<F: PrimeField>(
     cs: ConstraintSystemRef<F>,
     slice: &SlicePayload,
     scale: usize,
@@ -193,7 +196,7 @@ impl<F: PrimeField> FCircuit<F> for MnistSlice1Circuit<F> {
     type ExternalInputsVar = ();
 
     fn new(params: Self::Params) -> Result<Self, FSError> {
-        let (slice, scale) = build_slice_circuit::<F>(
+        let (slice, scale) = build_slice_circuit(
             &params,
             Self::INPUT_DIM,
             Self::OUTPUT_DIM,
@@ -259,7 +262,7 @@ impl<F: PrimeField> FCircuit<F> for MnistSlice2Circuit<F> {
     type ExternalInputsVar = ();
 
     fn new(params: Self::Params) -> Result<Self, FSError> {
-        let (slice, scale) = build_slice_circuit::<F>(
+        let (slice, scale) = build_slice_circuit(
             &params,
             Self::INPUT_DIM,
             Self::OUTPUT_DIM,

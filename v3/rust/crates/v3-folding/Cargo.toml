@@ -20,6 +20,16 @@ rand = { workspace = true }
 serde_json = { workspace = true }
 v3-circuit = { path = "../v3-circuit" }
 
+[dev-dependencies]
+v3-decider = { path = "../v3-decider" }
+sha2 = "0.10"
+base64 = "0.22"
+# Required ONLY for the `cubic_decider_check` diagnostic example (Sonobe
+# pin-health baseline). Pulled in via the same `[patch.crates-io]` table
+# as v3-decider so the concrete `Groth16<Bn254>` type resolves to the
+# same crate instance used everywhere else.
+ark-groth16 = { version = "^0.5.0", default-features = false, features = ["parallel"] }
+
 [[example]]
 name = "nova_hello"
 path = "examples/nova_hello.rs"
@@ -27,3 +37,11 @@ path = "examples/nova_hello.rs"
 [[example]]
 name = "mnist_single_slice"
 path = "examples/mnist_single_slice.rs"
+
+[[example]]
+name = "ivc_demo"
+path = "examples/ivc_demo.rs"
+
+[[example]]
+name = "cubic_decider_check"
+path = "examples/cubic_decider_check.rs"

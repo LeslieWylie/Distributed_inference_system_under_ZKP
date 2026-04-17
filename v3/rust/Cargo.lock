@@ -48,13 +48,13 @@ dependencies = [
 [[package]]
 name = "ark-crypto-primitives"
 version = "0.5.0"
-source = "git+https://github.com/flyingnobita/crypto-primitives?rev=f559264#f55926402fc9360781a64ab7b4f7a02bd340c62b"
+source = "git+https://github.com/winderica/crypto-primitives?rev=af003fc#af003fc69441d431d714331012b02443738ef5b6"
 dependencies = [
  "ahash",
- "ark-crypto-primitives-macros 0.5.0 (git+https://github.com/flyingnobita/crypto-primitives?rev=f559264)",
+ "ark-crypto-primitives-macros 0.5.0 (git+https://github.com/winderica/crypto-primitives?rev=af003fc)",
  "ark-ec",
  "ark-ff",
- "ark-r1cs-std 0.5.0 (git+https://github.com/flyingnobita/r1cs-std_yelhousni?rev=b4bab0c)",
+ "ark-r1cs-std 0.5.0 (git+https://github.com/winderica/r1cs-std?rev=ae8283a)",
  "ark-relations",
  "ark-serialize",
  "ark-snark",
@@ -98,7 +98,7 @@ dependencies = [
 [[package]]
 name = "ark-crypto-primitives-macros"
 version = "0.5.0"
-source = "git+https://github.com/flyingnobita/crypto-primitives?rev=f559264#f55926402fc9360781a64ab7b4f7a02bd340c62b"
+source = "git+https://github.com/winderica/crypto-primitives?rev=af003fc#af003fc69441d431d714331012b02443738ef5b6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -222,7 +222,7 @@ version = "0.5.0"
 source = "git+https://github.com/arkworks-rs/poly-commit#a05ec99d0d3e46c8ba0d6d3592980777bc2847e8"
 dependencies = [
  "ahash",
- "ark-crypto-primitives 0.5.0 (git+https://github.com/flyingnobita/crypto-primitives?rev=f559264)",
+ "ark-crypto-primitives 0.5.0 (git+https://github.com/winderica/crypto-primitives?rev=af003fc)",
  "ark-ec",
  "ark-ff",
  "ark-poly",
@@ -242,7 +242,7 @@ dependencies = [
 [[package]]
 name = "ark-r1cs-std"
 version = "0.5.0"
-source = "git+https://github.com/flyingnobita/r1cs-std_yelhousni?rev=b4bab0c#b4bab0cefa00530e44f06045162af4c6328baf2d"
+source = "git+https://github.com/winderica/r1cs-std?rev=ae8283a#ae8283ad602473f985cbcadcd03283892a0264e4"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -566,17 +566,17 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 [[package]]
 name = "folding-schemes"
 version = "0.1.0"
-source = "git+https://github.com/privacy-ethereum/sonobe?rev=63f2930d363150d4490ce2c4be8e0c25c2e1d92c#63f2930d363150d4490ce2c4be8e0c25c2e1d92c"
+source = "git+https://github.com/privacy-ethereum/sonobe.git?rev=2035e33ab17a914c135e3c42b4d1da932201f4f7#2035e33ab17a914c135e3c42b4d1da932201f4f7"
 dependencies = [
  "ark-bn254",
- "ark-crypto-primitives 0.5.0 (git+https://github.com/flyingnobita/crypto-primitives?rev=f559264)",
+ "ark-crypto-primitives 0.5.0 (git+https://github.com/winderica/crypto-primitives?rev=af003fc)",
  "ark-ec",
  "ark-ff",
  "ark-groth16",
  "ark-grumpkin",
  "ark-poly",
  "ark-poly-commit",
- "ark-r1cs-std 0.5.0 (git+https://github.com/flyingnobita/r1cs-std_yelhousni?rev=b4bab0c)",
+ "ark-r1cs-std 0.5.0 (git+https://github.com/winderica/r1cs-std?rev=ae8283a)",
  "ark-relations",
  "ark-serialize",
  "ark-snark",
@@ -854,9 +854,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
 dependencies = [
  "libc",
  "rand_chacha",
@@ -1219,7 +1219,7 @@ dependencies = [
  "anyhow",
  "ark-bn254",
  "ark-ff",
- "ark-r1cs-std 0.5.0 (git+https://github.com/flyingnobita/r1cs-std_yelhousni?rev=b4bab0c)",
+ "ark-r1cs-std 0.5.0 (git+https://github.com/winderica/r1cs-std?rev=ae8283a)",
  "ark-relations",
  "ark-std 0.5.0 (git+https://github.com/arkworks-rs/std)",
  "folding-schemes",
@@ -1232,8 +1232,20 @@ name = "v3-decider"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ark-bn254",
+ "ark-ec",
  "ark-ff",
+ "ark-groth16",
+ "ark-grumpkin",
+ "ark-r1cs-std 0.5.0 (git+https://github.com/winderica/r1cs-std?rev=ae8283a)",
+ "ark-relations",
  "ark-serialize",
+ "ark-snark",
+ "ark-std 0.5.0 (git+https://github.com/arkworks-rs/std)",
+ "folding-schemes",
+ "rand",
+ "v3-circuit",
+ "v3-folding",
 ]
 
 [[package]]
@@ -1244,15 +1256,19 @@ dependencies = [
  "ark-bn254",
  "ark-ec",
  "ark-ff",
+ "ark-groth16",
  "ark-grumpkin",
- "ark-r1cs-std 0.5.0 (git+https://github.com/flyingnobita/r1cs-std_yelhousni?rev=b4bab0c)",
+ "ark-r1cs-std 0.5.0 (git+https://github.com/winderica/r1cs-std?rev=ae8283a)",
  "ark-relations",
  "ark-serialize",
  "ark-std 0.5.0 (git+https://github.com/arkworks-rs/std)",
+ "base64",
  "folding-schemes",
  "rand",
  "serde_json",
+ "sha2",
  "v3-circuit",
+ "v3-decider",
 ]
 
 [[package]]
@@ -1433,11 +1449,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 
 [[patch.unused]]
-name = "ark-circom"
-version = "0.5.0"
-source = "git+https://github.com/dmpierre/circom-compat?rev=0dfd773c#0dfd773ca9599372b54b1957bba8f3a26929adc6"
-
-[[patch.unused]]
 name = "ark-mnt4-298"
 version = "0.5.0"
 source = "git+https://github.com/arkworks-rs/algebra#4cec9f0e7a9a4f0d26433917980b1d4d5d8e521c"
@@ -1456,3 +1467,8 @@ source = "git+https://github.com/arkworks-rs/algebra#4cec9f0e7a9a4f0d26433917980
 name = "ark-vesta"
 version = "0.5.0"
 source = "git+https://github.com/arkworks-rs/algebra#4cec9f0e7a9a4f0d26433917980b1d4d5d8e521c"
+
+[[patch.unused]]
+name = "ark-circom"
+version = "0.5.0"
+source = "git+https://github.com/winderica/circom-compat?rev=d94cc71#d94cc717ee1ca6dc5c30f95c35e6e493fbdd3016"

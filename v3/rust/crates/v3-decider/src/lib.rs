@@ -1,17 +1,21 @@
-//! v3-decider — Halo2-KZG decider crate for V3.
-//!
-//! Phase 1 only reserves the crate skeleton; Phase 3 (offchain decider)
-//! and Phase 4 (Pedersen-hiding integration) will populate it.
+//! v3-decider — succinct decider wrapper for Phase 3 (Groth16-BN254 via
+//! Sonobe `decider_eth`). Phase 4 will extend with Pedersen-hiding hooks
+//! but keep this module as the outer decider.
 
-/// Phase 1 placeholder; later phases will replace this with real APIs.
-pub fn dummy() {}
+pub mod groth16_decider;
+
+pub use groth16_decider::{
+    prove_and_verify, verify_from_bytes, DeciderRunOutput, DeciderTimings, MnistDecider,
+    MnistDeciderPP, MnistDeciderProof, MnistDeciderVP,
+};
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn dummy_is_a_noop() {
-        dummy();
+    fn type_aliases_resolve() {
+        // Compile-time smoke: the alias tree resolves end-to-end.
+        let _ = core::mem::size_of::<MnistDeciderVP>();
     }
 }

@@ -64,14 +64,14 @@ pub fn field_to_i128<F: PrimeField>(v: F) -> i128 {
     if bi <= half {
         // extract low 128 bits
         let limbs = bi.as_ref();
-        let lo0 = limbs.get(0).copied().unwrap_or(0);
+        let lo0 = limbs.first().copied().unwrap_or(0);
         let lo1 = limbs.get(1).copied().unwrap_or(0);
         let lo = (lo0 as u128) | ((lo1 as u128) << 64);
         lo as i128
     } else {
         let neg = (-v).into_bigint();
         let limbs = neg.as_ref();
-        let lo0 = limbs.get(0).copied().unwrap_or(0);
+        let lo0 = limbs.first().copied().unwrap_or(0);
         let lo1 = limbs.get(1).copied().unwrap_or(0);
         let lo = (lo0 as u128) | ((lo1 as u128) << 64);
         -(lo as i128)

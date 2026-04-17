@@ -21,7 +21,10 @@ pub mod model;
 pub mod mnist_slice;
 
 pub use constants::{ACTIVATION_BITS, QUANT_SCALE, SHIFT_REM_BITS, STATE_DIM};
-pub use mnist_slice::{MnistSlice1Circuit, MnistSlice2Circuit, MnistSliceParams};
+pub use mnist_slice::{
+    generate_slice_constraints, step_native_vec, MnistSlice1Circuit, MnistSlice2Circuit,
+    MnistSliceParams,
+};
 pub use model::{LayerEntry, SlicePayload, SlicesDocument};
 
 #[cfg(test)]
