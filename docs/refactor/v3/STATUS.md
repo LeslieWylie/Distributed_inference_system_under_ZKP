@@ -8,7 +8,7 @@
 | 0 | 01-phase0-freeze-v2.md | phase0-freeze-agent | ☑ done | 2026-04-17 | (see gitee/master) | v2-final tag pushed; v3 skeleton created |
 | 1 | 02-phase1-rust-sonobe.md | phase1-rust-sonobe-agent | ☑ done | 2026-04-17 | d1a6479 | Rust 1.95.0 + Sonobe @ 63f2930; nova_hello verify=true; subprocess bridge green |
 | 2 | 03-phase2-mnist-r1cs.md | phase2-mnist-r1cs-agent | ☑ done | 2026-04-17 | 8b01000 | MnistSlice1/2 FCircuit<Fr>; 100/100 consistency cases; max ε=0.000703 < 0.01; mnist_single_slice example verify=true |
-| 3 | 04-phase3-nova-ivc.md | (unassigned) | ☐ not started | - | - | - |
+| 3 | 04-phase3-nova-ivc.md + phase3-completion-report-2026-04-18.md | phase3-nova-ivc-agent | ☑ done | 2026-04-18 | 151cdcb (pre-push) | Sonobe dev@2035e33 (PR#227 Pedersen fix); decider_eth::Decider (Groth16+KZG+Pedersen); 9/9 verify=true across tiers 2/4/8; proof 384 B constant; verify ratio 8/2 = 1.187; peak RAM ~18 GB; P6/P7 正式 deferred to Phase 5 (verifier bridge + pipeline.py) |
 | 4 | 05-phase4-privacy-pedersen.md | (unassigned) | ☐ not started | - | - | - |
 | 5 | 06-phase5-collaborative-folding.md | (unassigned) | ☐ not started (optional, 等用户确认) | - | - | - |
 | 6 | 07-phase6-experiments.md | (unassigned) | ☐ not started | - | - | - |
