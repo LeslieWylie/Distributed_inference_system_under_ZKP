@@ -1,0 +1,87 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/v3-circuit",
+    "crates/v3-folding",
+    "crates/v3-decider",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["ZKP v3 team"]
+license = "MIT OR Apache-2.0"
+repository = "https://gitee.com/yaolewu/distributed_inference_system_under_-zkp"
+
+# ---------------------------------------------------------------------------
+# Sonobe pinning (Phase 1)
+#
+# Upstream crate is published under the privacy-ethereum org as `folding-schemes`
+# (the repo name is still `sonobe` and is sometimes referenced as
+# privacy-scaling-explorations/sonobe via redirect).  We pin a specific commit
+# per the Phase 1 spec (no `branch = "main"`).
+#
+# Pinned rev: 63f2930d363150d4490ce2c4be8e0c25c2e1d92c  (2026-02-19, main HEAD)
+# ---------------------------------------------------------------------------
+[workspace.dependencies]
+# Sonobe folding-schemes.
+# Note: `default = ["parallel"]` upstream; keep defaults so the espresso
+# sum-check prover compiles (it requires the rayon-backed `cfg_into_iter!`).
+folding-schemes = { git = "https://github.com/privacy-ethereum/sonobe", rev = "63f2930d363150d4490ce2c4be8e0c25c2e1d92c" }
+
+# Arkworks family — nominally 0.5.x, but real resolution comes from the
+# [patch.crates-io] table below (Sonobe's workspace requires git versions with
+# the GR1CS migration applied).  Features must mirror what folding-schemes
+# activates so trait implementations line up.
+ark-bn254 = { version = "^0.5.0", default-features = false }
+ark-grumpkin = { version = "^0.5.0", default-features = false }
+ark-ec = { version = "^0.5.0", default-features = false, features = ["parallel"] }
+ark-ff = { version = "^0.5.0", default-features = false, features = ["parallel", "asm"] }
+ark-r1cs-std = { version = "^0.5.0", default-features = false, features = ["parallel"] }
+ark-relations = { version = "^0.5.0", default-features = false }
+ark-serialize = { version = "^0.5.0" }
+ark-std = { version = "^0.5.0", default-features = false, features = ["parallel"] }
+
+# Utilities
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rand = "0.8.5"
+
+# ---------------------------------------------------------------------------
+# Patch table (mirrors Sonobe's own workspace patches at the pinned commit).
+# If this block and Sonobe's drift apart you will get trait-mismatch errors.
+# ---------------------------------------------------------------------------
+[patch.crates-io]
+ark-groth16 = { git = "https://github.com/arkworks-rs/groth16", rev = "b3b4a15" }
+
+ark-ff = { git = "https://github.com/arkworks-rs/algebra" }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra" }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra" }
+ark-poly = { git = "https://github.com/arkworks-rs/algebra" }
+
+ark-relations = { git = "https://github.com/arkworks-rs/snark" }
+ark-snark = { git = "https://github.com/arkworks-rs/snark" }
+
+ark-crypto-primitives = { git = "https://github.com/flyingnobita/crypto-primitives", rev = "f559264" }
+ark-r1cs-std = { git = "https://github.com/flyingnobita/r1cs-std_yelhousni", rev = "b4bab0c" }
+
+ark-std = { git = "https://github.com/arkworks-rs/std" }
+ark-poly-commit = { git = "https://github.com/arkworks-rs/poly-commit" }
+
+ark-bn254 = { git = "https://github.com/arkworks-rs/algebra" }
+ark-grumpkin = { git = "https://github.com/arkworks-rs/algebra" }
+ark-pallas = { git = "https://github.com/arkworks-rs/algebra" }
+ark-vesta = { git = "https://github.com/arkworks-rs/algebra" }
+ark-mnt4-298 = { git = "https://github.com/arkworks-rs/algebra" }
+ark-mnt6-298 = { git = "https://github.com/arkworks-rs/algebra" }
+
+[patch."https://github.com/arkworks-rs/circom-compat"]
+ark-circom = { git = "https://github.com/dmpierre/circom-compat", rev = "0dfd773c" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

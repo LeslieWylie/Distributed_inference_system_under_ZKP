@@ -6,7 +6,7 @@
 | Phase | Doc | Owner Agent | Status | Last Update | Commit | Notes |
 |-------|-----|-------------|--------|-------------|--------|-------|
 | 0 | 01-phase0-freeze-v2.md | phase0-freeze-agent | ☑ done | 2026-04-17 | (see gitee/master) | v2-final tag pushed; v3 skeleton created |
-| 1 | 02-phase1-rust-sonobe.md | (unassigned) | ☐ not started | - | - | - |
+| 1 | 02-phase1-rust-sonobe.md | phase1-rust-sonobe-agent | ↺ under review | 2026-04-17 | (this commit) | Rust 1.95.0 + Sonobe @ 63f2930; nova_hello verify=true; subprocess bridge green |
 | 2 | 03-phase2-mnist-r1cs.md | (unassigned) | ☐ not started | - | - | - |
 | 3 | 04-phase3-nova-ivc.md | (unassigned) | ☐ not started | - | - | - |
 | 4 | 05-phase4-privacy-pedersen.md | (unassigned) | ☐ not started | - | - | - |

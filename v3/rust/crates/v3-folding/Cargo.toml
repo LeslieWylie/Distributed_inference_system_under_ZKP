@@ -1,0 +1,23 @@
+[package]
+name = "v3-folding"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+folding-schemes = { workspace = true }
+ark-bn254 = { workspace = true }
+ark-grumpkin = { workspace = true }
+ark-ec = { workspace = true }
+ark-ff = { workspace = true }
+ark-r1cs-std = { workspace = true }
+ark-relations = { workspace = true }
+ark-serialize = { workspace = true }
+ark-std = { workspace = true }
+anyhow = { workspace = true }
+rand = { workspace = true }
+
+[[example]]
+name = "nova_hello"
+path = "examples/nova_hello.rs"

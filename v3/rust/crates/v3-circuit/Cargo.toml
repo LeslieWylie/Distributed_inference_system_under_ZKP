@@ -1,0 +1,12 @@
+[package]
+name = "v3-circuit"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ark-ff = { workspace = true }
+ark-r1cs-std = { workspace = true }
+ark-relations = { workspace = true }
+anyhow = { workspace = true }

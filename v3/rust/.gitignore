@@ -1,0 +1,5 @@
+# Rust build artifacts
+target/
+
+# Build / run logs captured during Phase 1 (evidence lives in REVIEWS.md instead)
+*.log
