@@ -1,5 +1,7 @@
 # 面向分布式推理的零知识证明框架
 
+> ⚠️ **Repository is in transition (2026-04-17)**: the active development line is **v3** (Collaborative Nova-IVC, see `docs/refactor/v3/`). The `v2/` directory is now a **frozen baseline** for comparison experiments and will not receive new features. See `docs/refactor/v3/00-overview.md` for the rationale.
+
 > Zero-Knowledge Proof Framework for Distributed Inference  
 > Prover-Worker Architecture with Distributed Proof Generation
 

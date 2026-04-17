@@ -90,3 +90,18 @@ conda-*/
 
 # pytest cache
 .pytest_cache/
+
+# Mentor: keep metadata + notes, exclude PDFs
+mentor/papers/*.pdf
+
+# Archived/moved content
+trash/
+
+# v3
+v3/artifacts/*
+!v3/artifacts/README.md
+!v3/metrics/README.md
+v3/rust/target/
+v3/rust/**/Cargo.lock.bak
+v3/python/__pycache__/
+v3/python/**/__pycache__/
